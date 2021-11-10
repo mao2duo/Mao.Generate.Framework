@@ -115,6 +115,13 @@ namespace Mao.Generate.Core.Services
             using (var conn = new SqlConnection(connectionString))
             {
                 sqlTable.Name = tableName;
+                sqlTable.Description = conn.QueryFirstOrDefault<string>(@"
+                    SELECT TOP 1 o_des.[value]
+                    FROM   sys.objects o
+                           LEFT JOIN sys.extended_properties o_des ON o_des.major_id = o.[object_id] AND o_des.minor_id = 0 AND o_des.[name] = 'MS_Description'
+                    WHERE  o.[type] = 'U'
+                           AND o.[name] = @TableName ",
+                    new { TableName = tableName });
                 sqlTable.Columns = conn.Query<SqlColumn>(@"
                     SELECT c.column_id                            AS Id,
                            CASE WHEN EXISTS (SELECT *
