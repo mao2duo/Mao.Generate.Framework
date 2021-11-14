@@ -51,7 +51,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Class1.cs" />
+    <Compile Include="Models\SqlDatabase.cs" />
+    <Compile Include="Models\SqlProcedure.cs" />
+    <Compile Include="Models\SqlView.cs" />
     <Compile Include="Services\CsService.cs" />
     <Compile Include="Models\CsAttribute.cs" />
     <Compile Include="Models\CsAttributeArgument.cs" />
@@ -64,6 +66,7 @@
     <Compile Include="Models\SqlForeignKey.cs" />
     <Compile Include="Models\SqlTable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\RemoteSqlService.cs" />
     <Compile Include="Services\SqlService.cs" />
     <Compile Include="TypeConverters\CsPropertyConverter.cs" />
     <Compile Include="TypeConverters\CsTypeConverter.cs" />

@@ -137,7 +137,7 @@ namespace Mao.Generate.Core.TypeConverters
                 {
                     sqlColumn.DefaultDefine = "('')";
                 }
-                else if (csProperty.TypeName.Equals("string", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(csProperty.DefaultValue.ToString()))
+                else if (csProperty.TypeName.Equals("string", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(csProperty.DefaultValue.ToString()))
                 {
                     sqlColumn.DefaultDefine = $"('{csProperty.DefaultValue}')";
                 }

@@ -21,7 +21,17 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
     public class App
     {
         /// <summary>
+        /// 是否為不能連接至目標資料庫的環境
+        /// </summary>
+        const bool isRemoteMode = false;
+        /// <summary>
+        /// 資料交換的目錄位置
+        /// <para>isRemoteMode = true 才需要設定</para>
+        /// </summary>
+        const string remoteDataExchangePath = @"D:\Temp\Exchange";
+        /// <summary>
         /// 要匯出資料結構的資料庫的的連接字串
+        /// <para>isRemoteMode = false 才需要設定</para>
         /// </summary>
         const string connectionString = @"";
         /// <summary>
@@ -35,20 +45,44 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         private readonly SqlService _sqlService;
         public App()
         {
-            _sqlService = new SqlService();
+            _sqlService = isRemoteMode ?
+                new RemoteSqlService()
+                {
+                    TempPath = remoteDataExchangePath,
+                    Awaiter = message =>
+                    {
+                        System.Console.WriteLine(message);
+                        System.Console.Write("按 Y 載入資料；按 N 不載入資料：");
+                        while (true)
+                        {
+                            var consoleRead = System.Console.ReadKey();
+                            if (consoleRead.Key == ConsoleKey.Y)
+                            {
+                                System.Console.WriteLine();
+                                return true;
+                            }
+                            if (consoleRead.Key == ConsoleKey.N)
+                            {
+                                System.Console.WriteLine();
+                                return false;
+                            }
+                        }
+                    }
+                } :
+                new SqlService();
         }
 
         private SqlTable[] sqlTables;
-        private string[] sqlProcedureNames;
+        private SqlView[] sqlViews;
+        private SqlProcedure[] sqlProcedures;
         /// <summary>
         /// 預先載入資料
         /// </summary>
         protected void Preloading()
         {
-            sqlTables = _sqlService.GetTableNames(connectionString)
-                .Select(x => _sqlService.GetSqlTable(connectionString, x))
-                .ToArray();
-            sqlProcedureNames = _sqlService.GetProcedureNames(connectionString);
+            sqlTables = _sqlService.GetSqlTables(connectionString) ?? new SqlTable[0];
+            sqlViews = _sqlService.GetSqlViews(connectionString) ?? new SqlView[0];
+            sqlProcedures = _sqlService.GetSqlProcedures(connectionString) ?? new SqlProcedure[0];
         }
         /// <summary>
         /// 主程序
@@ -98,13 +132,13 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
             int rowIndex = 1;
             Excel.Range range;
 
+            #region 資料表區塊
             // 資料表區塊
             range = worksheet.Range[$"A{rowIndex}", $"C{rowIndex + sqlTables.Length}"];
             // 資料表區塊 框線
             range.Cells.Borders.LineStyle = Excel.XlLineStyle.xlContinuous;
             // 資料表區塊 粗外框線
             range.BorderAround(Type.Missing, (Excel.XlBorderWeight)3, Excel.XlColorIndex.xlColorIndexAutomatic, Type.Missing);
-
             // 資料表區塊 字體
             range.Font.Name = "微軟正黑體";
             range.Font.Size = 11;
@@ -153,12 +187,55 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 // (+5 = 回清單 + 標題列 + 資料表說明行 + 建立索引語法行 + 間隔)
                 linkIndex += sqlTable.Columns.Length + 5;
             }
+            #endregion
 
-            // 資料表跟預存程序中間空一行
+            // 資料表跟檢視中間空一行
             rowIndex++;
 
+            #region 檢視區塊
+            // 檢視區塊
+            range = worksheet.Range[$"A{rowIndex}", $"C{rowIndex + sqlProcedures.Length}"];
+            // 檢視區塊 框線
+            range.Cells.Borders.LineStyle = Excel.XlLineStyle.xlContinuous;
+            // 檢視區塊 粗外框線
+            range.BorderAround(Type.Missing, (Excel.XlBorderWeight)3, Excel.XlColorIndex.xlColorIndexAutomatic, Type.Missing);
+            // 檢視區塊 字體
+            range.Font.Name = "微軟正黑體";
+            range.Font.Size = 11;
+            range.Font.Bold = true;
+            // 檢視區塊 標題列
+            worksheet.Cells[rowIndex, 2] = "View Name";
+            worksheet.Cells[rowIndex, 3] = "Description";
+            range = worksheet.Range[$"A{rowIndex}", $"C{rowIndex}"];
+            // 標題列置中
+            range.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
+            // 標題列文字顏色
+            range.Font.Color = RGB(155, 0, 128);
+            // 標題列背景色
+            range.Interior.Color = RGB(204, 255, 204);
+            rowIndex++;
+            // 檢視名稱 列表
+            num = 1;
+            foreach (var sqlView in sqlViews)
+            {
+                // 設定列高
+                range = worksheet.Range[$"A{rowIndex}"];
+                range.RowHeight = 20.1;
+                // 行數
+                worksheet.Cells[rowIndex, 1] = num;
+                worksheet.Cells[rowIndex, 2] = sqlView.Name;
+                worksheet.Cells[rowIndex, 3] = sqlView.Description;
+                rowIndex++;
+                num++;
+            }
+            #endregion
+
+            // 檢視跟預存程序中間空一行
+            rowIndex++;
+
+            #region 預存程序區塊
             // 預存程序區塊
-            range = worksheet.Range[$"A{rowIndex}", $"C{rowIndex + sqlProcedureNames.Length}"];
+            range = worksheet.Range[$"A{rowIndex}", $"C{rowIndex + sqlProcedures.Length}"];
             // 預存程序區塊 框線
             range.Cells.Borders.LineStyle = Excel.XlLineStyle.xlContinuous;
             // 預存程序區塊 粗外框線
@@ -180,19 +257,19 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
             rowIndex++;
             // 預存程序名稱 列表
             num = 1;
-            foreach (var sqlProcedureName in sqlProcedureNames)
+            foreach (var sqlProcedure in sqlProcedures)
             {
                 // 設定列高
                 range = worksheet.Range[$"A{rowIndex}"];
                 range.RowHeight = 20.1;
                 // 行數
                 worksheet.Cells[rowIndex, 1] = num;
-                worksheet.Cells[rowIndex, 2] = sqlProcedureName;
-                // 預存程序的說明，有地方取得嗎
-                worksheet.Cells[rowIndex, 3] = "";
+                worksheet.Cells[rowIndex, 2] = sqlProcedure.Name;
+                worksheet.Cells[rowIndex, 3] = sqlProcedure.Description;
                 rowIndex++;
                 num++;
             }
+            #endregion
 
             worksheet.Columns.AutoFit();
         }
