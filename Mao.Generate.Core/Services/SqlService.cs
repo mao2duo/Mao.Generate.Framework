@@ -245,6 +245,138 @@ namespace Mao.Generate.Core.Services
         }
 
         /// <summary>
+        /// 更新資料表的描述
+        /// </summary>
+        public virtual void UpdateTableDescription(string connectionString, string tableName, string description)
+        {
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.Execute(@"
+                    IF NOT EXISTS (
+	                    SELECT * 
+                        FROM   sys.objects o
+                               INNER JOIN sys.extended_properties o_des ON o_des.major_id = o.[object_id] AND o_des.minor_id = 0 AND o_des.[name] = 'MS_Description'
+	                    WHERE  o.type = 'U' AND o.[name] = @TableName 
+                    ) 
+                        BEGIN
+                            IF NULLIF(@Description, '') IS NOT NULL
+                                EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName 
+                        END
+                    ELSE 
+                        BEGIN
+                            IF NULLIF(@Description, '') IS NOT NULL
+	                            EXEC sys.sp_updateextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName 
+                            ELSE
+	                            EXEC sys.sp_dropextendedproperty @name=N'MS_Description', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName
+                        END ",
+                    new
+                    {
+                        TableName = tableName,
+                        Description = description
+                    });
+            }
+        }
+        /// <summary>
+        /// 更新資料表欄位的描述
+        /// </summary>
+        public virtual void UpdateColumnDescription(string connectionString, string tableName, string columnName, string description)
+        {
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.Execute(@"
+                    IF NOT EXISTS (
+	                    SELECT * 
+	                    FROM   sys.columns c 
+		                       INNER JOIN syscolumns sc ON c.object_id = sc.id AND c.column_id = sc.colid 
+		                       INNER JOIN sys.objects o ON c.object_id = o.object_id 
+		                       INNER JOIN sys.extended_properties p ON c.object_id = p.major_id AND c.column_id = p.minor_id AND p.[name] = 'MS_Description' 
+	                    WHERE  o.type = 'U' AND o.[name] = @TableName AND c.[name] = @ColumnName 
+                    ) 
+                        BEGIN
+                            IF NULLIF(@Description, '') IS NOT NULL
+                                EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName, @level2type=N'COLUMN', @level2name=@ColumnName 
+                        END
+                    ELSE 
+                        BEGIN
+                            IF NULLIF(@Description, '') IS NOT NULL
+	                            EXEC sys.sp_updateextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName, @level2type=N'COLUMN', @level2name=@ColumnName 
+                            ELSE
+	                            EXEC sys.sp_dropextendedproperty @name=N'MS_Description', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName, @level2type=N'COLUMN', @level2name=@ColumnName
+                        END ",
+                    new
+                    {
+                        TableName = tableName,
+                        ColumnName = columnName,
+                        Description = description
+                    });
+            }
+        }
+        /// <summary>
+        /// 更新檢視的描述
+        /// </summary>
+        public virtual void UpdateViewDescription(string connectionString, string viewName, string description)
+        {
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.Execute(@"
+                    IF NOT EXISTS (
+	                    SELECT * 
+                        FROM   sys.objects o
+                               INNER JOIN sys.extended_properties o_des ON o_des.major_id = o.[object_id] AND o_des.minor_id = 0 AND o_des.[name] = 'MS_Description'
+	                    WHERE  o.type = 'V' AND o.[name] = @ViewName 
+                    ) 
+                        BEGIN
+                            IF NULLIF(@Description, '') IS NOT NULL
+                                EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'VIEW', @level1name=@ViewName 
+                        END
+                    ELSE 
+                        BEGIN
+                            IF NULLIF(@Description, '') IS NOT NULL
+	                            EXEC sys.sp_updateextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'VIEW', @level1name=@ViewName 
+                            ELSE
+	                            EXEC sys.sp_dropextendedproperty @name=N'MS_Description', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'VIEW', @level1name=@ViewName
+                        END ",
+                    new
+                    {
+                        ViewName = viewName,
+                        Description = description
+                    });
+            }
+        }
+        /// <summary>
+        /// 更新預存程序的描述
+        /// </summary>
+        public virtual void UpdateProcedureDescription(string connectionString, string procedureName, string description)
+        {
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.Execute(@"
+                    IF NOT EXISTS (
+	                    SELECT * 
+                        FROM   sys.objects o
+                               INNER JOIN sys.extended_properties o_des ON o_des.major_id = o.[object_id] AND o_des.minor_id = 0 AND o_des.[name] = 'MS_Description'
+	                    WHERE  o.type = 'P' AND o.[name] = @ProcedureName 
+                    ) 
+                        BEGIN
+                            IF NULLIF(@Description, '') IS NOT NULL
+                                EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'PROCEDURE', @level1name=@ProcedureName 
+                        END
+                    ELSE 
+                        BEGIN
+                            IF NULLIF(@Description, '') IS NOT NULL
+	                            EXEC sys.sp_updateextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'PROCEDURE', @level1name=@ProcedureName 
+                            ELSE
+	                            EXEC sys.sp_dropextendedproperty @name=N'MS_Description', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'PROCEDURE', @level1name=@ProcedureName
+                        END ",
+                    new
+                    {
+                        ProcedureName = procedureName,
+                        Description = description
+                    });
+            }
+        }
+
+        /// <summary>
         /// 將 XML 的 InnerText 轉換成布林值
         /// </summary>
         protected virtual bool XmlInnerTextToBoolean(string innerText)
@@ -494,55 +626,6 @@ namespace Mao.Generate.Core.Services
         public string AddQuotes(object value)
         {
             return $"N'{value?.ToString().Replace("'", "''")}'";
-        }
-
-        /// <summary>
-        /// 新增或修改資料欄位的描述
-        /// </summary>
-        public void AddOrUpdateDescription(string connectionString, string tableName, string columnName, string description)
-        {
-            using (var conn = new SqlConnection(connectionString))
-            {
-                if (!string.IsNullOrEmpty(description))
-                {
-                    conn.Execute(@"
-                        IF EXISTS (
-	                        SELECT 1 
-	                        FROM   sys.columns c 
-		                           INNER JOIN syscolumns sc ON c.object_id = sc.id AND c.column_id = sc.colid 
-		                           INNER JOIN sys.objects o ON c.object_id = o.object_id 
-		                           INNER JOIN sys.extended_properties p ON c.object_id = p.major_id AND c.column_id = p.minor_id AND p.[name] = 'MS_Description' 
-	                        WHERE  o.type = 'U' AND o.[name] = @TableName AND c.[name] = @ColumnName 
-                        ) 
-	                        EXEC sys.sp_updateextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName, @level2type=N'COLUMN', @level2name=@ColumnName 
-                        ELSE 
-	                        EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=@Description, @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName, @level2type=N'COLUMN', @level2name=@ColumnName ",
-                        new
-                        {
-                            TableName = tableName,
-                            ColumnName = columnName,
-                            Description = description
-                        });
-                }
-                else
-                {
-                    conn.Execute(@"
-                        IF EXISTS (
-	                        SELECT 1 
-	                        FROM   sys.columns c 
-		                           INNER JOIN syscolumns sc ON c.object_id = sc.id AND c.column_id = sc.colid 
-		                           INNER JOIN sys.objects o ON c.object_id = o.object_id 
-		                           INNER JOIN sys.extended_properties p ON c.object_id = p.major_id AND c.column_id = p.minor_id AND p.[name] = 'MS_Description' 
-	                        WHERE  o.type = 'U' AND o.[name] = @TableName AND c.[name] = @ColumnName 
-                        ) 
-	                        EXEC sys.sp_updateextendedproperty @name=N'MS_Description', @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE', @level1name=@TableName, @level2type=N'COLUMN', @level2name=@ColumnName ",
-                        new
-                        {
-                            TableName = tableName,
-                            ColumnName = columnName
-                        });
-                }
-            }
         }
     }
 }
