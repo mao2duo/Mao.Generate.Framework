@@ -100,19 +100,15 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 {
                     workbook.Worksheets[2].Delete();
                 }
-                Excel.Worksheet defaultWorksheet = workbook.Worksheets[1];
-                {
-                    // 清單
-                    Excel.Worksheet worksheet = workbook.Worksheets.Add(After: workbook.Sheets[workbook.Sheets.Count]);
-                    FillSheet1(worksheet);
-                }
-                {
-                    // 系統主表
-                    Excel.Worksheet worksheet = workbook.Worksheets.Add(After: workbook.Sheets[workbook.Sheets.Count]);
-                    FillSheet2(worksheet);
-                }
+                Excel.Worksheet worksheet;
+                // 清單
+                worksheet = workbook.Worksheets.Add(After: workbook.Sheets[workbook.Sheets.Count]);
+                FillSheet1(worksheet);
+                // 系統主表
+                worksheet = workbook.Worksheets.Add(After: workbook.Sheets[workbook.Sheets.Count]);
+                FillSheet2(worksheet);
                 // 把原先僅剩的 Sheet 移除
-                defaultWorksheet.Delete();
+                workbook.Worksheets[1].Delete();
                 // 儲存成檔案
                 workbook.SaveAs(string.Format(exportFilePathFormat, DateTime.Now));
             }
@@ -194,7 +190,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
 
             #region 檢視區塊
             // 檢視區塊
-            range = worksheet.Range[$"A{rowIndex}", $"C{rowIndex + sqlProcedures.Length}"];
+            range = worksheet.Range[$"A{rowIndex}", $"C{rowIndex + sqlViews.Length}"];
             // 檢視區塊 框線
             range.Cells.Borders.LineStyle = Excel.XlLineStyle.xlContinuous;
             // 檢視區塊 粗外框線
