@@ -1,4 +1,5 @@
 ﻿using Mao.Generate.Core.Models;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class UIContainerConverter : TypeConverter
+    public class CsParameterConverter : TypeConverter
     {
         public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
@@ -39,33 +40,32 @@ namespace Mao.Generate.Core.TypeConverters
         }
 
         /// <summary>
-        /// CsType To UIContainer
+        /// ParameterSyntax To CsParameter
         /// </summary>
-        protected UIContainer ConvertFrom(CsType csType)
+        protected CsParameter ConvertFrom(ParameterSyntax parameterSyntax)
         {
-            UIContainer uiContainer = new UIContainer();
-            uiContainer.GenerateType = UIContainerGenerateType.Object;
-            //foreach (var property in properties)
-            //{
-            //    IEnumerable<UIInput> inputs;
-            //    if (property.PropertyType.IsArray)
-            //    {
-            //        inputs = GenerateArrayInputs(property);
-            //    }
-            //    else if (!typeof(string).IsAssignableFrom(property.PropertyType) && property.PropertyType.IsClass)
-            //    {
-            //        inputs = GenerateObjectInputs(property);
-            //    }
-            //    else
-            //    {
-            //        inputs = GenerateValueInputs(property);
-            //    }
-            //    if (inputs != null && inputs.Any())
-            //    {
-            //        uiContainer.Children.AddRange(inputs);
-            //    }
-            //}
-            return uiContainer;
+            CsParameter csParameter = new CsParameter();
+            csParameter.Name = parameterSyntax.Identifier.Text;
+
+            #region Type
+            TypeSyntax typeSyntax = parameterSyntax.DescendantNodes().OfType<TypeSyntax>().First(x => x.Parent == parameterSyntax);
+            csParameter.TypeName = typeSyntax.ToString();
+            #endregion
+            #region DefaultValue
+            if (parameterSyntax.Default != null)
+            {
+                if (parameterSyntax.Default.Value is LiteralExpressionSyntax parameterValueSyntax)
+                {
+                    csParameter.DefaultValue = parameterValueSyntax.Token.Value;
+                }
+                else
+                {
+                    csParameter.DefaultValue = parameterSyntax.Default.Value.ToString();
+                }
+            }
+            #endregion
+
+            return csParameter;
         }
     }
 }

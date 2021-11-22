@@ -39,7 +39,7 @@ namespace Mao.Generate.Core.TypeConverters
         }
 
         /// <summary>
-        /// 轉換成 SqlTable
+        /// CsType To SqlTable
         /// </summary>
         protected SqlTable ConvertFrom(CsType csType)
         {

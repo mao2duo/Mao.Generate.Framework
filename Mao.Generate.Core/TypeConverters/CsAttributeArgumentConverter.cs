@@ -1,4 +1,5 @@
 ﻿using Mao.Generate.Core.Models;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class UIContainerConverter : TypeConverter
+    public class CsAttributeArgumentConverter : TypeConverter
     {
         public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
@@ -39,33 +40,24 @@ namespace Mao.Generate.Core.TypeConverters
         }
 
         /// <summary>
-        /// CsType To UIContainer
+        /// AttributeArgumentSyntax To CsAttributeArgument
         /// </summary>
-        protected UIContainer ConvertFrom(CsType csType)
+        protected CsAttributeArgument ConvertFrom(AttributeArgumentSyntax argumentSyntax)
         {
-            UIContainer uiContainer = new UIContainer();
-            uiContainer.GenerateType = UIContainerGenerateType.Object;
-            //foreach (var property in properties)
-            //{
-            //    IEnumerable<UIInput> inputs;
-            //    if (property.PropertyType.IsArray)
-            //    {
-            //        inputs = GenerateArrayInputs(property);
-            //    }
-            //    else if (!typeof(string).IsAssignableFrom(property.PropertyType) && property.PropertyType.IsClass)
-            //    {
-            //        inputs = GenerateObjectInputs(property);
-            //    }
-            //    else
-            //    {
-            //        inputs = GenerateValueInputs(property);
-            //    }
-            //    if (inputs != null && inputs.Any())
-            //    {
-            //        uiContainer.Children.AddRange(inputs);
-            //    }
-            //}
-            return uiContainer;
+            CsAttributeArgument csAttributeArgument = new CsAttributeArgument();
+            if (argumentSyntax.NameEquals != null)
+            {
+                csAttributeArgument.Name = argumentSyntax.NameEquals.Name.Identifier.Text;
+            }
+            if (argumentSyntax.Expression is LiteralExpressionSyntax argumentLiteralExpressionSyntax)
+            {
+                csAttributeArgument.Value = argumentLiteralExpressionSyntax.Token.Value;
+            }
+            else
+            {
+                csAttributeArgument.Value = argumentSyntax.Expression.ToString();
+            }
+            return csAttributeArgument;
         }
     }
 }

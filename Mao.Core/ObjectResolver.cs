@@ -57,6 +57,34 @@ namespace System
             }
             throw new NotImplementedException($"沒有找到 TypeConverter 可以將 {sourceType.Name} 轉換成 {destinationType.Name}");
         }
+        /// <summary>
+        /// 透過 TypeConverter 將物件轉換成 T1, T2 類型
+        /// </summary>
+        public static T2 TypeConvert<T1, T2>(object value)
+        {
+            return TypeConvert<T2>(TypeConvert<T1>(value));
+        }
+        /// <summary>
+        /// 透過 TypeConverter 將物件轉換成 T1, T2, T3 類型
+        /// </summary>
+        public static T3 TypeConvert<T1, T2, T3>(object value)
+        {
+            return TypeConvert<T3>(TypeConvert<T2>(TypeConvert<T1>(value)));
+        }
+        /// <summary>
+        /// 透過 TypeConverter 將物件轉換成 T1, T2, T3, T4 類型
+        /// </summary>
+        public static T4 TypeConvert<T1, T2, T3, T4>(object value)
+        {
+            return TypeConvert<T4>(TypeConvert<T3>(TypeConvert<T2>(TypeConvert<T1>(value))));
+        }
+        /// <summary>
+        /// 透過 TypeConverter 將物件轉換成 T1, T2, T3, T4, T5 類型
+        /// </summary>
+        public static T5 TypeConvert<T1, T2, T3, T4, T5>(object value)
+        {
+            return TypeConvert<T5>(TypeConvert<T4>(TypeConvert<T3>(TypeConvert<T2>(TypeConvert<T1>(value)))));
+        }
 
         /// <summary>
         /// 從特定物件中尋找可以轉換類別的方法進行轉換

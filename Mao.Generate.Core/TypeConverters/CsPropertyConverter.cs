@@ -1,4 +1,6 @@
 ﻿using Mao.Generate.Core.Models;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -22,7 +24,6 @@ namespace Mao.Generate.Core.TypeConverters
                     && x.GetParameters().Length == 1
                     && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
         }
-
         public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
         {
             if (value != null)
@@ -40,6 +41,59 @@ namespace Mao.Generate.Core.TypeConverters
             return base.ConvertFrom(context, culture, value);
         }
 
+        /// <summary>
+        /// PropertyDeclarationSyntax To CsProperty
+        /// </summary>
+        protected CsProperty ConvertFrom(PropertyDeclarationSyntax propertySyntax)
+        {
+            CsProperty csProperty = new CsProperty();
+            csProperty.Name = propertySyntax.Identifier.Text;
+
+            #region Summary
+            var propertySummarySyntax = propertySyntax.GetLeadingTrivia()
+                .FirstOrDefault(x =>
+                    x.RawKind == (int)SyntaxKind.SingleLineDocumentationCommentTrivia
+                    || x.RawKind == (int)SyntaxKind.MultiLineDocumentationCommentTrivia);
+            Invoker.Using(new Services.CsService(), csService =>
+            {
+                csProperty.Summary = csService.GetSummary(propertySummarySyntax);
+            });
+            #endregion
+            #region Attribute
+            var attributesSyntax = propertySyntax.DescendantNodes().OfType<AttributeSyntax>();
+            if (attributesSyntax != null && attributesSyntax.Any())
+            {
+                List<CsAttribute> csAttributes = new List<CsAttribute>();
+                foreach (var attributeSyntax in attributesSyntax)
+                {
+                    csAttributes.Add(ObjectResolver.TypeConvert<CsAttribute>(attributeSyntax));
+                }
+                csProperty.Attributes = csAttributes.ToArray();
+            }
+            #endregion
+            #region Type
+            TypeSyntax typeSyntax = propertySyntax.DescendantNodes().OfType<TypeSyntax>().First(x => x.Parent == propertySyntax);
+            csProperty.TypeName = typeSyntax.ToString();
+            #endregion
+            #region DefaultValue
+            if (propertySyntax.Initializer != null)
+            {
+                if (propertySyntax.Initializer.Value is LiteralExpressionSyntax defaultValueSyntax)
+                {
+                    csProperty.DefaultValue = defaultValueSyntax.Token.Value;
+                }
+                else
+                {
+                    csProperty.DefaultValue = propertySyntax.Initializer.Value.ToString();
+                }
+            }
+            #endregion
+
+            return csProperty;
+        }
+        /// <summary>
+        /// PropertyInfo To CsProperty
+        /// </summary>
         protected CsProperty ConvertFrom(PropertyInfo property)
         {
             CsProperty csProperty = new CsProperty();
@@ -57,7 +111,9 @@ namespace Mao.Generate.Core.TypeConverters
                 .ToArray();
             return csProperty;
         }
-
+        /// <summary>
+        /// SqlColumn To CsProperty
+        /// </summary>
         protected CsProperty ConvertFrom(SqlColumn sqlColumn)
         {
             CsProperty csProperty = new CsProperty();

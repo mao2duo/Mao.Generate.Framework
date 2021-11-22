@@ -1,4 +1,6 @@
 ﻿using Mao.Generate.Core.Models;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -38,6 +40,66 @@ namespace Mao.Generate.Core.TypeConverters
             return base.ConvertFrom(context, culture, value);
         }
 
+        /// <summary>
+        /// ClassDeclarationSyntax To CsType
+        /// </summary>
+        protected CsType ConvertFrom(ClassDeclarationSyntax classSyntax)
+        {
+            CsType csType = new CsType();
+            List<CsAttribute> csAttributes = new List<CsAttribute>();
+            List<CsProperty> csProperties = new List<CsProperty>();
+            List<CsMethod> csMethods = new List<CsMethod>();
+
+            // TODO: Namespace, BaseTypeName
+
+            #region Summary
+            var classSummarySyntax = classSyntax.GetLeadingTrivia()
+                .FirstOrDefault(x =>
+                    x.RawKind == (int)SyntaxKind.SingleLineDocumentationCommentTrivia
+                    || x.RawKind == (int)SyntaxKind.MultiLineDocumentationCommentTrivia);
+            Invoker.Using(new Services.CsService(), csService =>
+            {
+                csType.Summary = csService.GetSummary(classSummarySyntax);
+            });
+            #endregion
+            #region Attribute
+            var attributesSyntax = classSyntax.DescendantNodes().OfType<AttributeSyntax>();
+            if (attributesSyntax != null && attributesSyntax.Any())
+            {
+                foreach (var attributeSyntax in attributesSyntax)
+                {
+                    csAttributes.Add(ObjectResolver.TypeConvert<CsAttribute>(attributeSyntax));
+                }
+            }
+            #endregion
+            #region Properties
+            IEnumerable<PropertyDeclarationSyntax> propertiesSyntax = classSyntax.DescendantNodes()
+                .OfType<PropertyDeclarationSyntax>()
+                .Where(x => x.Parent == classSyntax);
+            foreach (var propertySyntax in propertiesSyntax)
+            {
+                csProperties.Add(ObjectResolver.TypeConvert<CsProperty>(propertySyntax));
+            }
+            #endregion
+            #region Methods
+            IEnumerable<MethodDeclarationSyntax> methodsSyntax = classSyntax.DescendantNodes()
+                .OfType<MethodDeclarationSyntax>()
+                .Where(x => x.Parent == classSyntax);
+            foreach (var methodSyntax in methodsSyntax)
+            {
+                csMethods.Add(ObjectResolver.TypeConvert<CsMethod>(methodSyntax));
+            }
+            #endregion
+
+            csType.Name = classSyntax.Identifier.Text;
+            csType.Attributes = csAttributes.ToArray();
+            csType.Properties = csProperties.ToArray();
+            csType.Methods = csMethods.ToArray();
+            return csType;
+        }
+        /// <summary>
+        /// Type To CsType
+        /// </summary>
         protected CsType ConvertFrom(Type type)
         {
             CsType csType = new CsType();
@@ -78,7 +140,9 @@ namespace Mao.Generate.Core.TypeConverters
             }
             return csType;
         }
-
+        /// <summary>
+        /// SqlTable To CsType
+        /// </summary>
         protected CsType ConvertFrom(SqlTable sqlTable)
         {
             CsType csType = new CsType();

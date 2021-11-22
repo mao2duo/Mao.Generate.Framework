@@ -1,4 +1,6 @@
 ﻿using Mao.Generate.Core.Models;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class UIContainerConverter : TypeConverter
+    public class CsEnumConverter : TypeConverter
     {
         public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
@@ -39,33 +41,45 @@ namespace Mao.Generate.Core.TypeConverters
         }
 
         /// <summary>
-        /// CsType To UIContainer
+        /// EnumDeclarationSyntax To CsEnum
         /// </summary>
-        protected UIContainer ConvertFrom(CsType csType)
+        protected CsEnum ConvertFrom(EnumDeclarationSyntax enumSyntax)
         {
-            UIContainer uiContainer = new UIContainer();
-            uiContainer.GenerateType = UIContainerGenerateType.Object;
-            //foreach (var property in properties)
-            //{
-            //    IEnumerable<UIInput> inputs;
-            //    if (property.PropertyType.IsArray)
-            //    {
-            //        inputs = GenerateArrayInputs(property);
-            //    }
-            //    else if (!typeof(string).IsAssignableFrom(property.PropertyType) && property.PropertyType.IsClass)
-            //    {
-            //        inputs = GenerateObjectInputs(property);
-            //    }
-            //    else
-            //    {
-            //        inputs = GenerateValueInputs(property);
-            //    }
-            //    if (inputs != null && inputs.Any())
-            //    {
-            //        uiContainer.Children.AddRange(inputs);
-            //    }
-            //}
-            return uiContainer;
+            CsEnum csEnum = new CsEnum();
+            List<CsEnumMember> csEnumMembers = new List<CsEnumMember>();
+
+            var enumSummarySyntax = enumSyntax.GetLeadingTrivia()
+                .FirstOrDefault(x =>
+                    x.RawKind == (int)SyntaxKind.SingleLineDocumentationCommentTrivia
+                    || x.RawKind == (int)SyntaxKind.MultiLineDocumentationCommentTrivia);
+            Invoker.Using(new Services.CsService(), csService =>
+            {
+                csEnum.Summary = csService.GetSummary(enumSummarySyntax);
+            });
+
+            IEnumerable<EnumMemberDeclarationSyntax> membersSyntax = enumSyntax.DescendantNodes()
+                .OfType<EnumMemberDeclarationSyntax>()
+                .Where(x => x.Parent == enumSyntax);
+
+            int value = 0;
+            foreach (var memberSyntax in membersSyntax)
+            {
+                var csEnumMember = ObjectResolver.TypeConvert<CsEnumMember>(memberSyntax);
+                if (csEnumMember.Value == 0)
+                {
+                    csEnumMember.Value = value;
+                }
+                else
+                {
+                    value = csEnumMember.Value;
+                }
+                csEnumMembers.Add(csEnumMember);
+                value++;
+            }
+
+            csEnum.Name = enumSyntax.Identifier.Text;
+            csEnum.Members = csEnumMembers.ToArray();
+            return csEnum;
         }
     }
 }

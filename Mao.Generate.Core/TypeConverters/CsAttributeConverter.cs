@@ -1,4 +1,5 @@
 ﻿using Mao.Generate.Core.Models;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -38,6 +39,44 @@ namespace Mao.Generate.Core.TypeConverters
             return base.ConvertFrom(context, culture, value);
         }
 
+        /// <summary>
+        /// AttributeSyntax To CsAttribute
+        /// </summary>
+        protected CsAttribute ConvertFrom(AttributeSyntax attributeSyntax)
+        {
+            IdentifierNameSyntax attributeNameSyntax = null;
+            if (attributeSyntax.Name is IdentifierNameSyntax)
+            {
+                attributeNameSyntax = attributeSyntax.Name as IdentifierNameSyntax;
+            }
+            else if (attributeSyntax.Name is QualifiedNameSyntax qualifiedNameSyntax)
+            {
+                // 如果有包含 Namespace
+                attributeNameSyntax = qualifiedNameSyntax.Right as IdentifierNameSyntax;
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+            CsAttribute csAttribute = new CsAttribute();
+            csAttribute.Name = attributeNameSyntax.Identifier.Text;
+            #region Argument
+            if (attributeSyntax.ArgumentList != null && attributeSyntax.ArgumentList.Arguments.Any())
+            {
+                List<CsAttributeArgument> csAttributeArguments = new List<CsAttributeArgument>();
+                foreach (var argumentSyntax in attributeSyntax.ArgumentList.Arguments)
+                {
+                    csAttributeArguments.Add(ObjectResolver.TypeConvert<CsAttributeArgument>(argumentSyntax));
+                }
+                csAttribute.Arguments = csAttributeArguments.ToArray();
+            }
+            #endregion
+
+            return csAttribute;
+        }
+        /// <summary>
+        /// Attribute To CsAttribute
+        /// </summary>
         protected CsAttribute ConvertFrom(Attribute attribute)
         {
             var csAttribute = new CsAttribute();

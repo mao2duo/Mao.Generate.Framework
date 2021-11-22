@@ -39,6 +39,9 @@ namespace Mao.Generate.Core.TypeConverters
             return base.ConvertFrom(context, culture, value);
         }
 
+        /// <summary>
+        /// CsProperty To SqlColumn
+        /// </summary>
         protected SqlColumn ConvertFrom(CsProperty csProperty)
         {
             SqlColumn sqlColumn = new SqlColumn();
