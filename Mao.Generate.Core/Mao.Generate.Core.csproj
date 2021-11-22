@@ -59,6 +59,14 @@
     <Compile Include="Models\SqlDatabase.cs" />
     <Compile Include="Models\SqlProcedure.cs" />
     <Compile Include="Models\SqlView.cs" />
+    <Compile Include="Models\UIArrayInput.cs" />
+    <Compile Include="Models\UICheckbox.cs" />
+    <Compile Include="Models\UIContainer.cs" />
+    <Compile Include="Models\UIDataSource.cs" />
+    <Compile Include="Models\UIInput.cs" />
+    <Compile Include="Models\UILabel.cs" />
+    <Compile Include="Models\UISelect.cs" />
+    <Compile Include="Models\UITextbox.cs" />
     <Compile Include="Models\WinDirectory.cs" />
     <Compile Include="Models\WinTextFile.cs" />
     <Compile Include="Options\GenerateFilesOptions.cs" />
@@ -82,6 +90,7 @@
     <Compile Include="TypeConverters\CsTypeConverter.cs" />
     <Compile Include="TypeConverters\SqlColumnConverter.cs" />
     <Compile Include="TypeConverters\SqlTableConverter.cs" />
+    <Compile Include="TypeConverters\UIContainerConverter.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

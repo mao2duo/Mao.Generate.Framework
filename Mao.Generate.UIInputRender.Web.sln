@@ -5,6 +5,10 @@ VisualStudioVersion = 16.0.30717.126
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Generate.UIInputRender.Web", "Mao.Generate.UIInputRender.Web\Mao.Generate.UIInputRender.Web.csproj", "{14341BAC-4524-4737-82A8-9D42DB883FE7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Core", "Mao.Core\Mao.Core.csproj", "{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Generate.Core", "Mao.Generate.Core\Mao.Generate.Core.csproj", "{68746F1F-F655-4808-90E8-6F3522B32C16}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{14341BAC-4524-4737-82A8-9D42DB883FE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{14341BAC-4524-4737-82A8-9D42DB883FE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{14341BAC-4524-4737-82A8-9D42DB883FE7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68746F1F-F655-4808-90E8-6F3522B32C16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68746F1F-F655-4808-90E8-6F3522B32C16}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68746F1F-F655-4808-90E8-6F3522B32C16}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68746F1F-F655-4808-90E8-6F3522B32C16}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

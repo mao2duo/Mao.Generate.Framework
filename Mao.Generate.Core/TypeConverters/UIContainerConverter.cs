@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class CsAttributeConverter : TypeConverter
+    public class UIContainerConverter : TypeConverter
     {
         public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
@@ -21,6 +21,7 @@ namespace Mao.Generate.Core.TypeConverters
                     && x.GetParameters().Length == 1
                     && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
         }
+
         public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
         {
             if (value != null)
@@ -38,25 +39,31 @@ namespace Mao.Generate.Core.TypeConverters
             return base.ConvertFrom(context, culture, value);
         }
 
-        protected CsAttribute ConvertFrom(Attribute attribute)
+        protected UIContainer ConvertFrom(CsType csType)
         {
-            var csAttribute = new CsAttribute();
-            var attributeType = attribute.GetType();
-            csAttribute.Name = attributeType.Name;
-            var attributeProperties = attributeType.GetProperties();
-            if (attributeProperties != null && attributeProperties.Any())
-            {
-                var csAttributeArguments = new List<CsAttributeArgument>();
-                foreach (var attributeProperty in attributeProperties)
-                {
-                    var csAttributeArgument = new CsAttributeArgument();
-                    csAttributeArgument.Name = attributeProperty.Name;
-                    csAttributeArgument.Value = attributeProperty.GetValue(attribute);
-                    csAttributeArguments.Add(csAttributeArgument);
-                }
-                csAttribute.Arguments = csAttributeArguments.ToArray();
-            }
-            return csAttribute;
+            UIContainer uiContainer = new UIContainer();
+            uiContainer.GenerateType = UIContainerGenerateType.Object;
+            //foreach (var property in properties)
+            //{
+            //    IEnumerable<UIInput> inputs;
+            //    if (property.PropertyType.IsArray)
+            //    {
+            //        inputs = GenerateArrayInputs(property);
+            //    }
+            //    else if (!typeof(string).IsAssignableFrom(property.PropertyType) && property.PropertyType.IsClass)
+            //    {
+            //        inputs = GenerateObjectInputs(property);
+            //    }
+            //    else
+            //    {
+            //        inputs = GenerateValueInputs(property);
+            //    }
+            //    if (inputs != null && inputs.Any())
+            //    {
+            //        uiContainer.Children.AddRange(inputs);
+            //    }
+            //}
+            return uiContainer;
         }
     }
 }

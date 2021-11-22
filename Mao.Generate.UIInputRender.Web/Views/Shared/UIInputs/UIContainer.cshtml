@@ -1,0 +1,68 @@
+﻿@model HtmlInputViewModel<UIContainer>
+@{
+    HtmlInputRenderer inputRenderer = new HtmlInputRenderer(Html);
+    UIContainer container = Model.Input;
+    string prefix = null;
+    if (Model.Parameters.ContainsKey("Prefix"))
+    {
+        prefix = Model.Parameters["Prefix"] as string;
+        if (!string.IsNullOrWhiteSpace(container.Name))
+        {
+            if (!string.IsNullOrWhiteSpace(prefix))
+            {
+                prefix = $"{prefix.Trim('.')}.{container.Name.Trim('.')}";
+            }
+            else
+            {
+                prefix = container.Name;
+            }
+        }
+    }
+}
+
+@if (container.GenerateType == UIContainerGenerateType.Object)
+{
+    <div class="row">
+        @RenderInputs(inputRenderer, container.Children, new Dictionary<string, object>()
+        {
+            { "Container", container },
+            { "Prefix", prefix }
+        }, Model.Returns)
+    </div>
+}
+else if (container.GenerateType == UIContainerGenerateType.Value)
+{
+    <div class="col-md-12 form-group">
+        @RenderInputs(inputRenderer, container.Children, new Dictionary<string, object>()
+        {
+            { "Container", container },
+            { "Prefix", prefix }
+        }, Model.Returns)
+    </div>
+}
+else
+{
+    @RenderInputs(inputRenderer, container.Children, new Dictionary<string, object>()
+    {
+        { "Container", container },
+        { "Prefix", prefix }
+    }, Model.Returns)
+}
+
+@helper RenderInputs(HtmlInputRenderer inputRenderer, IEnumerable<UIInput> inputs, Dictionary<string, object> parameters, NameValueCollection returns)
+{
+    if (inputs != null && inputs.Any())
+    {
+        foreach (var input in inputs)
+        {
+            @inputRenderer.Render(input, parameters, out NameValueCollection inputReturns)
+            foreach (string key in inputReturns.AllKeys)
+            {
+                foreach (string value in inputReturns.GetValues(key))
+                {
+                    returns.Add(key, value);
+                }
+            }
+        }
+    }
+}

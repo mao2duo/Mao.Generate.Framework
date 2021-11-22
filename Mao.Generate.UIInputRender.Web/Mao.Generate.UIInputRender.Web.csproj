@@ -133,6 +133,8 @@
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Features\HtmlInputRenderer.cs" />
+    <Compile Include="Features\HtmlInputViewModel.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -2205,6 +2207,19 @@
     <Content Include="lib\popper.js-1.16.1\umd\popper.js.map" />
     <Content Include="lib\popper.js-1.16.1\umd\popper.min.js.map" />
     <None Include="packages.config" />
+    <Content Include="Views\Shared\UIInputs\UIContainer.cshtml" />
+    <Content Include="Views\Shared\UIInputs\UILabel.cshtml" />
+    <Content Include="Views\Shared\UIInputs\UITextbox.cshtml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Mao.Core\Mao.Core.csproj">
+      <Project>{6fbdbc11-b474-4434-8781-0a0aa6c3dc92}</Project>
+      <Name>Mao.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Mao.Generate.Core\Mao.Generate.Core.csproj">
+      <Project>{68746f1f-f655-4808-90e8-6f3522b32c16}</Project>
+      <Name>Mao.Generate.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

@@ -12,38 +12,55 @@ namespace Mao.Generate.Core.TypeConverters
 {
     public class SqlTableConverter : TypeConverter
     {
-        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType) => false;
-
-        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
+        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
+        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
         {
             return this.GetType()
                 .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Any(x => x.Name == nameof(ConvertTo)
-                    && destinationType.IsAssignableFrom(x.ReturnType));
+                .Any(x => x.Name == nameof(ConvertFrom)
+                    && x.GetParameters().Length == 1
+                    && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
         }
-
-        public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
+        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
         {
-            if (value is SqlTable sqlTable)
+            if (value != null)
             {
-                if (destinationType == typeof(CsType))
+                var convert = this.GetType()
+                    .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    .FirstOrDefault(x => x.Name == nameof(ConvertFrom)
+                        && x.GetParameters().Length == 1
+                        && x.GetParameters()[0].ParameterType.IsAssignableFrom(value.GetType()));
+                if (convert != null)
                 {
-                    return ConvertTo(sqlTable);
+                    convert.Invoke(this, new object[] { value });
                 }
             }
-            return base.ConvertTo(context, culture, value, destinationType);
+            return base.ConvertFrom(context, culture, value);
         }
 
-        protected CsType ConvertTo(SqlTable sqlTable)
+        /// <summary>
+        /// 轉換成 SqlTable
+        /// </summary>
+        protected SqlTable ConvertFrom(CsType csType)
         {
-            CsType csType = new CsType();
-            csType.Name = sqlTable.Name;
-            csType.Summary = sqlTable.Description;
-            csType.Properties = sqlTable.Columns?
+            SqlTable sqlTable = new SqlTable();
+            if (csType.Attributes != null && csType.Attributes.Any(x => x.Name == "Table" || x.Name == "TableAttribute"))
+            {
+                sqlTable.Name = csType.Attributes.First(x => x.Name == "Table" || x.Name == "TableAttribute")
+                    .Arguments[0].Value as string;
+            }
+            else
+            {
+                sqlTable.Name = csType.Name;
+            }
+            sqlTable.Description = csType.Summary;
+            sqlTable.Columns = csType.Properties
+                .Where(x => x.Attributes == null
+                    || !x.Attributes.Any(y => y.Name == "NotMapped" || y.Name == "NotMappedAttribute"))
+                .Select(x => ObjectResolver.TypeConvert<SqlColumn>(x))
                 .OrderBy(x => x.Order)
-                .Select(x => ObjectResolver.TypeConvert<CsProperty>(x))
                 .ToArray();
-            return csType;
+            return sqlTable;
         }
     }
 }
