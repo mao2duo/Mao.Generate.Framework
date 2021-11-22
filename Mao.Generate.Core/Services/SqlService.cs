@@ -2,6 +2,7 @@
 using Mao.Generate.Core.Models;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
@@ -373,6 +374,126 @@ namespace Mao.Generate.Core.Services
                         ProcedureName = procedureName,
                         Description = description
                     });
+            }
+        }
+        /// <summary>
+        /// 產生對應資料表的查詢結果的 INSERT 語法
+        /// </summary>
+        public virtual string GenerateInsertCommand(string connectionString, string tableName, string sqlCommand)
+        {
+            SqlTable sqlTable = GetSqlTables(connectionString, tableName).First();
+            var dt = new DataTable();
+            using (var conn = new SqlConnection(connectionString))
+            {
+                var reader = conn.ExecuteReader(sqlCommand);
+                dt.Load(reader);
+            }
+            return GenerateInsertCommand(sqlTable, dt);
+        }
+        /// <summary>
+        /// 產生對應資料表的查詢結果的 INSERT 語法
+        /// </summary>
+        public virtual string GenerateInsertCommand(SqlTable sqlTable, DataTable dt)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            if (dt != null && dt.Rows.Count != 0)
+            {
+                SqlColumn[] sqlColumns = sqlTable.Columns
+                    .Where(x => !(x.IsNullable || x.IsIdentity || !string.IsNullOrEmpty(x.DefaultDefine)) || dt.Columns.Contains(x.Name))
+                    .ToArray();
+                SqlColumn identityColumn = sqlTable.Columns
+                    .Where(x => x.IsIdentity)
+                    .FirstOrDefault();
+                bool insertIdentity = identityColumn != null && sqlColumns.Contains(identityColumn);
+                stringBuilder.AppendLine($"INSERT INTO [{sqlTable.Name}] ({string.Join(", ", sqlColumns.Select(x => $"[{x.Name}]"))})");
+                stringBuilder.AppendLine($"VALUES");
+                foreach (DataRow row in dt.Rows)
+                {
+                    stringBuilder.AppendLine($"({string.Join(", ", sqlColumns.Select(x => GenerateValueExpression(x.TypeName, x.IsNullable, dt.Columns.Contains(x.Name) ? row[x.Name] : null)))}),");
+                }
+            }
+            return stringBuilder.ToString().TrimEnd(' ', '\r', '\n', ',');
+        }
+        /// <summary>
+        /// 將物件轉成 SQL 的表達式
+        /// </summary>
+        public virtual string GenerateValueExpression(string typeName, bool isNullable, object value)
+        {
+            if (isNullable && value == null)
+            {
+                return "NULL";
+            }
+            if (value is SqlParameter parameter)
+            {
+                return $"@{parameter.ParameterName.TrimStart('@')}";
+            }
+            switch (typeName)
+            {
+                case "bit":
+                    if (value is bool b)
+                    {
+                        return b ? "1" : "0";
+                    }
+                    string lower = Convert.ToString(value).ToLower();
+                    if (lower == "true" || lower == "t" || lower == "1")
+                    {
+                        return "1";
+                    }
+                    return "0";
+                case "date":
+                    if (value is DateTime d1)
+                    {
+                        return $"'{d1:yyyy-MM-dd}'";
+                    }
+                    return AddQuotesIfNotFunction(value);
+                case "smalldatetime":
+                    if (value is DateTime d2)
+                    {
+                        return $"'{d2:yyyy-MM-dd HH:mm:ss}'";
+                    }
+                    return AddQuotesIfNotFunction(value);
+                case "datetime":
+                case "datetime2":
+                    if (value is DateTime d3)
+                    {
+                        return $"'{d3:yyyy-MM-dd HH:mm:ss.fff}'";
+                    }
+                    return AddQuotesIfNotFunction(value);
+                case "time":
+                case "timestamp":
+                case "datetimeoffset":
+                case "binary":
+                case "varbinary":
+                case "image":
+                    throw new NotImplementedException();
+                case "char":
+                case "nchar":
+                case "ntext":
+                case "nvarchar":
+                case "sql_variant":
+                case "text":
+                case "uniqueidentifier":
+                case "varchar":
+                case "xml":
+                    return AddQuotesIfNotFunction(value);
+                case "bigint":
+                case "decimal":
+                case "float":
+                case "int":
+                case "money":
+                case "numeric":
+                case "real":
+                case "smallint":
+                case "smallmoney":
+                case "tinyint":
+                    string s = Convert.ToString(value);
+                    if (!string.IsNullOrWhiteSpace(s))
+                    {
+                        return s;
+                    }
+                    return "0";
+                default:
+                    throw new NotImplementedException();
             }
         }
 

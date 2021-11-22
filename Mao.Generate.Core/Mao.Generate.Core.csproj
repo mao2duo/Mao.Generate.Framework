@@ -77,6 +77,7 @@
     <Compile Include="Services\GenerateService.cs" />
     <Compile Include="Services\RemoteSqlService.cs" />
     <Compile Include="Services\SqlService.cs" />
+    <Compile Include="TypeConverters\CsAttributeConverter.cs" />
     <Compile Include="TypeConverters\CsPropertyConverter.cs" />
     <Compile Include="TypeConverters\CsTypeConverter.cs" />
     <Compile Include="TypeConverters\SqlColumnConverter.cs" />

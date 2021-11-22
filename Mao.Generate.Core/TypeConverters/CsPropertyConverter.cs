@@ -14,7 +14,41 @@ namespace Mao.Generate.Core.TypeConverters
 {
     public class CsPropertyConverter : TypeConverter
     {
-        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType) => false;
+        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+        {
+            return this.GetType()
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Any(x => x.Name == nameof(ConvertFrom)
+                    && x.GetParameters().Length == 1
+                    && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
+        }
+
+        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+        {
+            if (value is PropertyInfo property)
+            {
+                return ConvertFrom(property);
+            }
+            return base.ConvertFrom(context, culture, value);
+        }
+
+        protected CsProperty ConvertFrom(PropertyInfo property)
+        {
+            CsProperty csProperty = new CsProperty();
+            csProperty.TypeName = property.PropertyType.Name;
+            csProperty.Name = property.Name;
+            // 描述
+            var descriptionAttribute = property.GetCustomAttribute<DescriptionAttribute>();
+            if (descriptionAttribute != null)
+            {
+                csProperty.Summary = descriptionAttribute.Description;
+            }
+            // 標籤
+            csProperty.Attributes = property.GetCustomAttributes()?
+                .Select(x => ObjectResolver.TypeConvert<CsAttribute>(x))
+                .ToArray();
+            return csProperty;
+        }
 
         public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
         {
@@ -51,6 +85,11 @@ namespace Mao.Generate.Core.TypeConverters
             else
             {
                 sqlColumn.Name = csProperty.Name;
+            }
+            // 如果有 [Column(Order = N)] 則指定欄位的排序
+            if (columnAttribute != null && columnAttribute.Arguments.Any(y => y.Name == "Order"))
+            {
+                sqlColumn.Order = (int)columnAttribute.Arguments.First(y => y.Name == "Order").Value;
             }
 
             // 如果有 [Key] 或名稱為 Id 就設為主鍵
