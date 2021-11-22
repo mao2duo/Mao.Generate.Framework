@@ -1,7 +1,7 @@
 ﻿using System.Web;
 using System.Web.Optimization;
 
-namespace Mao.Generate.CsTypeToInput.Web
+namespace Mao.Generate.UIInputRender.Web
 {
     public class BundleConfig
     {

@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // 組件的一般資訊會透過將設定 
 // 控制。變更這些屬性值可修改與組件關聯的
 // 資訊。
-[assembly: AssemblyTitle("Mao.Generate.CsTypeToInput.Web")]
+[assembly: AssemblyTitle("Mao.Generate.UIInputRender.Web")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Mao.Generate.CsTypeToInput.Web")]
+[assembly: AssemblyProduct("Mao.Generate.UIInputRender.Web")]
 [assembly: AssemblyCopyright("Copyright (C)  2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
