@@ -1,0 +1,61 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30717.126
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Generate.UIInputRender.Web", "Mao.Generate.UIInputRender.Web\Mao.Generate.UIInputRender.Web.csproj", "{14341BAC-4524-4737-82A8-9D42DB883FE7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Core", "Mao.Core\Mao.Core.csproj", "{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Generate.Core", "Mao.Generate.Core\Mao.Generate.Core.csproj", "{68746F1F-F655-4808-90E8-6F3522B32C16}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.CodeDom", "Mao.CodeDom\Mao.CodeDom.csproj", "{97AA98F6-BD0D-47A0-9EFB-9B74C4DF09E4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Generate.ExcelToSqlDescription.Console", "Mao.Generate.ExcelToSqlDescription.Console\Mao.Generate.ExcelToSqlDescription.Console.csproj", "{9B454B42-9834-4FFF-99AC-1A954F3008F4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Generate.SqlSchemaToExcel.Console", "Mao.Generate.SqlSchemaToExcel.Console\Mao.Generate.SqlSchemaToExcel.Console.csproj", "{55F186C3-1409-4926-A871-440E54D8CEAA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mao.Develop.Test", "Mao.Develop.Test\Mao.Develop.Test.csproj", "{2BFB8208-F5AA-4911-875C-35B61269EFE7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{14341BAC-4524-4737-82A8-9D42DB883FE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14341BAC-4524-4737-82A8-9D42DB883FE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14341BAC-4524-4737-82A8-9D42DB883FE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14341BAC-4524-4737-82A8-9D42DB883FE7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FBDBC11-B474-4434-8781-0A0AA6C3DC92}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68746F1F-F655-4808-90E8-6F3522B32C16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68746F1F-F655-4808-90E8-6F3522B32C16}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68746F1F-F655-4808-90E8-6F3522B32C16}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68746F1F-F655-4808-90E8-6F3522B32C16}.Release|Any CPU.Build.0 = Release|Any CPU
+		{97AA98F6-BD0D-47A0-9EFB-9B74C4DF09E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{97AA98F6-BD0D-47A0-9EFB-9B74C4DF09E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{97AA98F6-BD0D-47A0-9EFB-9B74C4DF09E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{97AA98F6-BD0D-47A0-9EFB-9B74C4DF09E4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B454B42-9834-4FFF-99AC-1A954F3008F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B454B42-9834-4FFF-99AC-1A954F3008F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B454B42-9834-4FFF-99AC-1A954F3008F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B454B42-9834-4FFF-99AC-1A954F3008F4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55F186C3-1409-4926-A871-440E54D8CEAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55F186C3-1409-4926-A871-440E54D8CEAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55F186C3-1409-4926-A871-440E54D8CEAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55F186C3-1409-4926-A871-440E54D8CEAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2BFB8208-F5AA-4911-875C-35B61269EFE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2BFB8208-F5AA-4911-875C-35B61269EFE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2BFB8208-F5AA-4911-875C-35B61269EFE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2BFB8208-F5AA-4911-875C-35B61269EFE7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8A3EC0C6-0579-449D-889B-E5585989ACF7}
+	EndGlobalSection
+EndGlobal
