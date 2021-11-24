@@ -1,7 +1,11 @@
-﻿using System;
+﻿using Mao.Core.Interfaces;
+using Mao.Core.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
@@ -9,6 +13,11 @@ namespace System
 {
     public class ObjectResolver
     {
+        /// <summary>
+        /// 注入服務的接口
+        /// </summary>
+        public static IDependencyResolver DependencyResolver { get; set; }
+
         private static T GetDefaultValue<T>()
         {
             return default(T);
@@ -23,67 +32,70 @@ namespace System
                 .MakeGenericMethod(type)
                 .Invoke(null, null);
         }
-
         /// <summary>
-        /// 透過 TypeConverter 轉換物件類型
+        /// 透過 TypeConverter 將類型 TSource 的物件轉換成類型 TDestination
         /// </summary>
-        public static T TypeConvert<T>(object value)
+        /// <param name="instance">來源的所有者</param>
+        /// <param name="sourcePropertyName">存放來源的屬性名稱</param>
+        /// <param name="destination">已存在的目標參照物件</param>
+        public static TDestination TypeConvert<TInstance, TSource, TDestination>(TInstance instance, string sourcePropertyName, TDestination destination = default(TDestination))
         {
-            if (value == null)
+            IServiceProvider serviceProvider = null;
+            if (DependencyResolver != null)
             {
-                return default(T);
+                serviceProvider = (IServiceProvider)DependencyResolver.GetService(typeof(IServiceProvider));
             }
-            return (T)TypeConvert(typeof(T), value);
+            TypeDescriptorContext<TSource, TDestination> context = new TypeDescriptorContext<TSource, TDestination>(serviceProvider, instance, sourcePropertyName, destination);
+            TSource source = (TSource)context.PropertyDescriptor.GetValue(instance);
+            return TypeConvert(context, source);
         }
         /// <summary>
-        /// 透過 TypeConverter 轉換物件類型
+        /// 透過 TypeConverter 將類型 TSource 的物件轉換成類型 TDestination
         /// </summary>
-        public static object TypeConvert(Type destinationType, object value)
+        /// <param name="instance">來源的所有者</param>
+        /// <param name="source">來源</param>
+        /// <param name="destination">已存在的目標參照物件</param>
+        public static TDestination TypeConvert<TInstance, TSource, TDestination>(TInstance instance, TSource source, TDestination destination = default(TDestination))
         {
-            if (value == null)
+            IServiceProvider serviceProvider = null;
+            if (DependencyResolver != null)
             {
-                return null;
+                serviceProvider = (IServiceProvider)DependencyResolver.GetService(typeof(IServiceProvider));
             }
-            var sourceType = value.GetType();
-            TypeConverter sourceTypeConverter = TypeDescriptor.GetConverter(sourceType);
-            if (sourceTypeConverter != null && sourceTypeConverter.CanConvertTo(destinationType))
+            TypeDescriptorContext<TSource, TDestination> context = new TypeDescriptorContext<TSource, TDestination>(serviceProvider, instance, null, destination);
+            return TypeConvert(context, source);
+        }
+        /// <summary>
+        /// 透過 TypeConverter 將類型 TSource 的物件轉換成類型 TDestination
+        /// </summary>
+        public static TDestination TypeConvert<TSource, TDestination>(TSource source, TDestination destination = default(TDestination))
+        {
+            IServiceProvider serviceProvider = null;
+            if (DependencyResolver != null)
             {
-                return sourceTypeConverter.ConvertTo(value, destinationType);
+                serviceProvider = (IServiceProvider)DependencyResolver.GetService(typeof(IServiceProvider));
+            }
+            TypeDescriptorContext<TSource, TDestination> context = new TypeDescriptorContext<TSource, TDestination>(serviceProvider, null, null, destination);
+            return TypeConvert(context, source);
+        }
+        /// <summary>
+        /// 透過 TypeConverter 將類型 TSource 的物件轉換成類型 TDestination
+        /// </summary>
+        public static TDestination TypeConvert<TSource, TDestination>(TypeDescriptorContext<TSource, TDestination> context, TSource source)
+        {
+            Type sourceType = typeof(TSource);
+            Type destinationType = typeof(TDestination);
+            TypeConverter sourceTypeConverter = TypeDescriptor.GetConverter(sourceType);
+            if (sourceTypeConverter != null && sourceTypeConverter.CanConvertTo(context, destinationType))
+            {
+                return (TDestination)sourceTypeConverter.ConvertTo(context, CultureInfo.CurrentCulture, source, destinationType);
             }
             TypeConverter destinationTypeConverter = TypeDescriptor.GetConverter(destinationType);
-            if (destinationTypeConverter != null && destinationTypeConverter.CanConvertFrom(sourceType))
+            if (destinationTypeConverter != null && destinationTypeConverter.CanConvertFrom(context, sourceType))
             {
-                return destinationTypeConverter.ConvertFrom(value);
+                return (TDestination)destinationTypeConverter.ConvertFrom(context, CultureInfo.CurrentCulture, source);
             }
             throw new NotImplementedException($"沒有找到 TypeConverter 可以將 {sourceType.Name} 轉換成 {destinationType.Name}");
-        }
-        /// <summary>
-        /// 透過 TypeConverter 將物件轉換成 T1, T2 類型
-        /// </summary>
-        public static T2 TypeConvert<T1, T2>(object value)
-        {
-            return TypeConvert<T2>(TypeConvert<T1>(value));
-        }
-        /// <summary>
-        /// 透過 TypeConverter 將物件轉換成 T1, T2, T3 類型
-        /// </summary>
-        public static T3 TypeConvert<T1, T2, T3>(object value)
-        {
-            return TypeConvert<T3>(TypeConvert<T2>(TypeConvert<T1>(value)));
-        }
-        /// <summary>
-        /// 透過 TypeConverter 將物件轉換成 T1, T2, T3, T4 類型
-        /// </summary>
-        public static T4 TypeConvert<T1, T2, T3, T4>(object value)
-        {
-            return TypeConvert<T4>(TypeConvert<T3>(TypeConvert<T2>(TypeConvert<T1>(value))));
-        }
-        /// <summary>
-        /// 透過 TypeConverter 將物件轉換成 T1, T2, T3, T4, T5 類型
-        /// </summary>
-        public static T5 TypeConvert<T1, T2, T3, T4, T5>(object value)
-        {
-            return TypeConvert<T5>(TypeConvert<T4>(TypeConvert<T3>(TypeConvert<T2>(TypeConvert<T1>(value)))));
         }
 
         /// <summary>

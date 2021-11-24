@@ -13,32 +13,5 @@ namespace Mao.Generate.Core.Models
     {
         public string Name { get; set; }
         public object Value { get; set; }
-
-        public override string ToString()
-        {
-            string left = this.Name;
-            string right;
-            if (this.Value == null)
-            {
-                right = "null";
-            }
-            else if (this.Value is string @string)
-            {
-                right = $"\"{@string}\"";
-            }
-            else if (this.Value is Type type)
-            {
-                right = $"typeof({type.Name})";
-            }
-            else
-            {
-                throw new NotSupportedException();
-            }
-            if (string.IsNullOrEmpty(left))
-            {
-                return right;
-            }
-            return $"{left} = {right}";
-        }
     }
 }

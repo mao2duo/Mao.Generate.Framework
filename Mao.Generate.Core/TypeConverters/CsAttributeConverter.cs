@@ -2,8 +2,6 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -11,34 +9,8 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class CsAttributeConverter : TypeConverter
+    public class CsAttributeConverter : BaseTypeConverter
     {
-        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
-        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-        {
-            return this.GetType()
-                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Any(x => x.Name == nameof(ConvertFrom)
-                    && x.GetParameters().Length == 1
-                    && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
-        }
-        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-        {
-            if (value != null)
-            {
-                var convert = this.GetType()
-                    .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                    .FirstOrDefault(x => x.Name == nameof(ConvertFrom)
-                        && x.GetParameters().Length == 1
-                        && x.GetParameters()[0].ParameterType.IsAssignableFrom(value.GetType()));
-                if (convert != null)
-                {
-                    convert.Invoke(this, new object[] { value });
-                }
-            }
-            return base.ConvertFrom(context, culture, value);
-        }
-
         /// <summary>
         /// AttributeSyntax To CsAttribute
         /// </summary>
@@ -60,18 +32,9 @@ namespace Mao.Generate.Core.TypeConverters
             }
             CsAttribute csAttribute = new CsAttribute();
             csAttribute.Name = attributeNameSyntax.Identifier.Text;
-            #region Argument
-            if (attributeSyntax.ArgumentList != null && attributeSyntax.ArgumentList.Arguments.Any())
-            {
-                List<CsAttributeArgument> csAttributeArguments = new List<CsAttributeArgument>();
-                foreach (var argumentSyntax in attributeSyntax.ArgumentList.Arguments)
-                {
-                    csAttributeArguments.Add(ObjectResolver.TypeConvert<CsAttributeArgument>(argumentSyntax));
-                }
-                csAttribute.Arguments = csAttributeArguments.ToArray();
-            }
-            #endregion
-
+            csAttribute.Arguments = attributeSyntax.ArgumentList?.Arguments
+                .Select(x => ObjectResolver.TypeConvert<AttributeArgumentSyntax, CsAttributeArgument>(x))
+                .ToArray();
             return csAttribute;
         }
         /// <summary>
@@ -82,20 +45,21 @@ namespace Mao.Generate.Core.TypeConverters
             var csAttribute = new CsAttribute();
             var attributeType = attribute.GetType();
             csAttribute.Name = attributeType.Name;
-            var attributeProperties = attributeType.GetProperties();
-            if (attributeProperties != null && attributeProperties.Any())
-            {
-                var csAttributeArguments = new List<CsAttributeArgument>();
-                foreach (var attributeProperty in attributeProperties)
-                {
-                    var csAttributeArgument = new CsAttributeArgument();
-                    csAttributeArgument.Name = attributeProperty.Name;
-                    csAttributeArgument.Value = attributeProperty.GetValue(attribute);
-                    csAttributeArguments.Add(csAttributeArgument);
-                }
-                csAttribute.Arguments = csAttributeArguments.ToArray();
-            }
+            csAttribute.Arguments = attributeType.GetProperties()
+                .Select(x => ObjectResolver.TypeConvert<Attribute, PropertyInfo, CsAttributeArgument>(attribute, x))
+                .ToArray();
             return csAttribute;
+        }
+        /// <summary>
+        /// CsAttribute To String
+        /// </summary>
+        protected string ConvertTo(CsAttribute csAttribute)
+        {
+            if (csAttribute.Arguments != null && csAttribute.Arguments.Any())
+            {
+                return $"[{csAttribute.Name}({string.Join(", ", csAttribute.Arguments.Select(x => ObjectResolver.TypeConvert<CsAttributeArgument, string>(x)))})]";
+            }
+            return $"[{csAttribute.Name}]";
         }
     }
 }

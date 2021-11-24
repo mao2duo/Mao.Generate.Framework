@@ -1,9 +1,8 @@
-﻿using Mao.Generate.Core.Models;
+﻿using Mao.Core.Models;
+using Mao.Generate.Core.Models;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -11,34 +10,8 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class CsAttributeArgumentConverter : TypeConverter
+    public class CsAttributeArgumentConverter : BaseTypeConverter
     {
-        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
-        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-        {
-            return this.GetType()
-                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Any(x => x.Name == nameof(ConvertFrom)
-                    && x.GetParameters().Length == 1
-                    && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
-        }
-        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-        {
-            if (value != null)
-            {
-                var convert = this.GetType()
-                    .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                    .FirstOrDefault(x => x.Name == nameof(ConvertFrom)
-                        && x.GetParameters().Length == 1
-                        && x.GetParameters()[0].ParameterType.IsAssignableFrom(value.GetType()));
-                if (convert != null)
-                {
-                    convert.Invoke(this, new object[] { value });
-                }
-            }
-            return base.ConvertFrom(context, culture, value);
-        }
-
         /// <summary>
         /// AttributeArgumentSyntax To CsAttributeArgument
         /// </summary>
@@ -58,6 +31,45 @@ namespace Mao.Generate.Core.TypeConverters
                 csAttributeArgument.Value = argumentSyntax.Expression.ToString();
             }
             return csAttributeArgument;
+        }
+        /// <summary>
+        /// PropertyInfo To CsAttributeArgument
+        /// </summary>
+        protected CsAttributeArgument ConvertFrom(PropertyInfo property, TypeDescriptorContext<PropertyInfo, CsAttributeArgument> context)
+        {
+            var csAttributeArgument = new CsAttributeArgument();
+            csAttributeArgument.Name = property.Name;
+            csAttributeArgument.Value = property.GetValue(context.Instance);
+            return csAttributeArgument;
+        }
+        /// <summary>
+        /// CsAttributeArgument To String
+        /// </summary>
+        protected string ConvertTo(CsAttributeArgument csAttributeArgument)
+        {
+            string left = csAttributeArgument.Name;
+            string right;
+            if (csAttributeArgument.Value == null)
+            {
+                right = "null";
+            }
+            else if (csAttributeArgument.Value is string @string)
+            {
+                right = $"\"{@string}\"";
+            }
+            else if (csAttributeArgument.Value is Type type)
+            {
+                right = $"typeof({type.Name})";
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+            if (string.IsNullOrEmpty(left))
+            {
+                return right;
+            }
+            return $"{left} = {right}";
         }
     }
 }

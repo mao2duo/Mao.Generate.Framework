@@ -1,11 +1,12 @@
-﻿using Mao.Generate.Core.Models;
+﻿using Mao.Core.Models;
+using Mao.Generate.Core.Models;
+using Mao.Generate.Core.Services;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -13,39 +14,15 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class CsPropertyConverter : TypeConverter
+    public class CsPropertyConverter : BaseTypeConverter
     {
-        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
-        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-        {
-            return this.GetType()
-                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Any(x => x.Name == nameof(ConvertFrom)
-                    && x.GetParameters().Length == 1
-                    && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
-        }
-        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-        {
-            if (value != null)
-            {
-                var convert = this.GetType()
-                    .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                    .FirstOrDefault(x => x.Name == nameof(ConvertFrom)
-                        && x.GetParameters().Length == 1
-                        && x.GetParameters()[0].ParameterType.IsAssignableFrom(value.GetType()));
-                if (convert != null)
-                {
-                    convert.Invoke(this, new object[] { value });
-                }
-            }
-            return base.ConvertFrom(context, culture, value);
-        }
-
         /// <summary>
         /// PropertyDeclarationSyntax To CsProperty
         /// </summary>
-        protected CsProperty ConvertFrom(PropertyDeclarationSyntax propertySyntax)
+        protected CsProperty ConvertFrom(PropertyDeclarationSyntax propertySyntax, TypeDescriptorContext<PropertyDeclarationSyntax, CsProperty> context)
         {
+            CsService csService = context.GetService(typeof(CsService)) as CsService;
+
             CsProperty csProperty = new CsProperty();
             csProperty.Name = propertySyntax.Identifier.Text;
 
@@ -54,26 +31,19 @@ namespace Mao.Generate.Core.TypeConverters
                 .FirstOrDefault(x =>
                     x.RawKind == (int)SyntaxKind.SingleLineDocumentationCommentTrivia
                     || x.RawKind == (int)SyntaxKind.MultiLineDocumentationCommentTrivia);
-            Invoker.Using(new Services.CsService(), csService =>
-            {
-                csProperty.Summary = csService.GetSummary(propertySummarySyntax);
-            });
+            csProperty.Summary = csService.GetSummary(propertySummarySyntax);
             #endregion
             #region Attribute
-            var attributesSyntax = propertySyntax.DescendantNodes().OfType<AttributeSyntax>();
-            if (attributesSyntax != null && attributesSyntax.Any())
-            {
-                List<CsAttribute> csAttributes = new List<CsAttribute>();
-                foreach (var attributeSyntax in attributesSyntax)
-                {
-                    csAttributes.Add(ObjectResolver.TypeConvert<CsAttribute>(attributeSyntax));
-                }
-                csProperty.Attributes = csAttributes.ToArray();
-            }
+            csProperty.Attributes = propertySyntax.DescendantNodes()
+                .OfType<AttributeSyntax>()?
+                .Select(x => ObjectResolver.TypeConvert<AttributeSyntax, CsAttribute>(x))
+                .ToArray();
             #endregion
             #region Type
-            TypeSyntax typeSyntax = propertySyntax.DescendantNodes().OfType<TypeSyntax>().First(x => x.Parent == propertySyntax);
-            csProperty.TypeName = typeSyntax.ToString();
+            csProperty.TypeName = propertySyntax.DescendantNodes()
+                .OfType<TypeSyntax>()
+                .First(x => x.Parent == propertySyntax)
+                .ToString();
             #endregion
             #region DefaultValue
             if (propertySyntax.Initializer != null)
@@ -107,7 +77,7 @@ namespace Mao.Generate.Core.TypeConverters
             }
             // 標籤
             csProperty.Attributes = property.GetCustomAttributes()?
-                .Select(x => ObjectResolver.TypeConvert<CsAttribute>(x))
+                .Select(x => ObjectResolver.TypeConvert<Attribute, CsAttribute>(x))
                 .ToArray();
             return csProperty;
         }
@@ -118,7 +88,7 @@ namespace Mao.Generate.Core.TypeConverters
         {
             CsProperty csProperty = new CsProperty();
             csProperty.Summary = sqlColumn.Description;
-            csProperty.TypeName = this.GetTypeName(sqlColumn);
+            csProperty.TypeName = this.GetTypeNameFrom(sqlColumn);
             csProperty.Name = sqlColumn.Name;
             var attributes = new List<CsAttribute>();
             if (sqlColumn.IsPrimaryKey)
@@ -158,11 +128,10 @@ namespace Mao.Generate.Core.TypeConverters
             }
             return csProperty;
         }
-
         /// <summary>
         /// 從資料庫的類型取得 C# 類型的名稱
         /// </summary>
-        protected string GetTypeName(SqlColumn sqlColumn)
+        private string GetTypeNameFrom(SqlColumn sqlColumn)
         {
             switch (sqlColumn.TypeName)
             {
@@ -226,6 +195,33 @@ namespace Mao.Generate.Core.TypeConverters
                     return "string";
             }
             return null;
+        }
+        /// <summary>
+        /// CsProperty To String
+        /// </summary>
+        protected string ConvertTo(CsProperty csProperty)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(csProperty.Summary))
+            {
+                stringBuilder.AppendLine($@"
+/// <summary>
+{string.Join("\n", csProperty.Summary.Replace("\r\n", "\n").Split('\n').Select(x => $"/// {x}"))}
+/// </summary>".TrimStart('\r', '\n'));
+            }
+            if (csProperty.Attributes != null && csProperty.Attributes.Any())
+            {
+                foreach (var csAttribute in csProperty.Attributes)
+                {
+                    stringBuilder.AppendLine(ObjectResolver.TypeConvert<CsAttribute, string>(csAttribute));
+                }
+            }
+            stringBuilder.Append($"public {csProperty.TypeName} {csProperty.Name} {{ get; set; }}");
+            if (!string.IsNullOrEmpty(csProperty.DefaultDefine))
+            {
+                stringBuilder.Append($" = {csProperty.DefaultDefine};");
+            }
+            return stringBuilder.ToString();
         }
     }
 }

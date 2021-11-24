@@ -121,6 +121,7 @@
     <Compile Include="Services\GenerateService.cs" />
     <Compile Include="Services\RemoteSqlService.cs" />
     <Compile Include="Services\SqlService.cs" />
+    <Compile Include="TypeConverters\BaseTypeConverter.cs" />
     <Compile Include="TypeConverters\CsAttributeArgumentConverter.cs" />
     <Compile Include="TypeConverters\CsAttributeConverter.cs" />
     <Compile Include="TypeConverters\CsEnumConverter.cs" />

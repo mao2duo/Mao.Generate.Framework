@@ -1,43 +1,14 @@
 ﻿using Mao.Generate.Core.Models;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class SqlTableConverter : TypeConverter
+    public class SqlTableConverter : BaseTypeConverter
     {
-        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
-        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-        {
-            return this.GetType()
-                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Any(x => x.Name == nameof(ConvertFrom)
-                    && x.GetParameters().Length == 1
-                    && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
-        }
-        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-        {
-            if (value != null)
-            {
-                var convert = this.GetType()
-                    .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                    .FirstOrDefault(x => x.Name == nameof(ConvertFrom)
-                        && x.GetParameters().Length == 1
-                        && x.GetParameters()[0].ParameterType.IsAssignableFrom(value.GetType()));
-                if (convert != null)
-                {
-                    convert.Invoke(this, new object[] { value });
-                }
-            }
-            return base.ConvertFrom(context, culture, value);
-        }
-
         /// <summary>
         /// CsType To SqlTable
         /// </summary>
@@ -57,7 +28,7 @@ namespace Mao.Generate.Core.TypeConverters
             sqlTable.Columns = csType.Properties
                 .Where(x => x.Attributes == null
                     || !x.Attributes.Any(y => y.Name == "NotMapped" || y.Name == "NotMappedAttribute"))
-                .Select(x => ObjectResolver.TypeConvert<SqlColumn>(x))
+                .Select(x => ObjectResolver.TypeConvert<CsProperty, SqlColumn>(x))
                 .OrderBy(x => x.Order)
                 .ToArray();
             return sqlTable;

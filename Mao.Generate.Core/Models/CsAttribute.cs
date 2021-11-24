@@ -13,14 +13,5 @@ namespace Mao.Generate.Core.Models
     {
         public string Name { get; set; }
         public CsAttributeArgument[] Arguments { get; set; }
-
-        public override string ToString()
-        {
-            if (this.Arguments != null && this.Arguments.Any())
-            {
-                return $"[{this.Name}({string.Join(", ", this.Arguments.Select(x => x.ToString()))})]";
-            }
-            return $"[{this.Name}]";
-        }
     }
 }

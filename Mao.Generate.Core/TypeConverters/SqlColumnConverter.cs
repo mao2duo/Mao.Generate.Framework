@@ -1,44 +1,15 @@
 ﻿using Mao.Generate.Core.Models;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.TypeConverters
 {
-    public class SqlColumnConverter : TypeConverter
+    public class SqlColumnConverter : BaseTypeConverter
     {
-        public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType) => false;
-        public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-        {
-            return this.GetType()
-                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Any(x => x.Name == nameof(ConvertFrom)
-                    && x.GetParameters().Length == 1
-                    && x.GetParameters()[0].ParameterType.IsAssignableFrom(sourceType));
-        }
-        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-        {
-            if (value != null)
-            {
-                var convert = this.GetType()
-                    .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                    .FirstOrDefault(x => x.Name == nameof(ConvertFrom)
-                        && x.GetParameters().Length == 1
-                        && x.GetParameters()[0].ParameterType.IsAssignableFrom(value.GetType()));
-                if (convert != null)
-                {
-                    convert.Invoke(this, new object[] { value });
-                }
-            }
-            return base.ConvertFrom(context, culture, value);
-        }
-
         /// <summary>
         /// CsProperty To SqlColumn
         /// </summary>
@@ -93,7 +64,7 @@ namespace Mao.Generate.Core.TypeConverters
             }
             else
             {
-                sqlColumn.TypeName = this.GetTypeName(csProperty);
+                sqlColumn.TypeName = this.GetTypeNameFrom(csProperty);
                 if (!string.IsNullOrEmpty(sqlColumn.TypeName))
                 {
                     // 如果有 [StringLength] 或 [MaxLength] 則指定字串的長度
@@ -115,6 +86,11 @@ namespace Mao.Generate.Core.TypeConverters
                                 "MaxLength",
                                 "MaxLengthAttribute"
                             }.Contains(x.Name)).Arguments[0].Value);
+                    }
+                    else
+                    {
+                        // 沒有限制長度時，預設字串長度為 max
+                        sqlColumn.Length = -1;
                     }
                 }
             }
@@ -157,13 +133,7 @@ namespace Mao.Generate.Core.TypeConverters
             sqlColumn.Description = csProperty.Summary;
             return sqlColumn;
         }
-
-        protected string GetVariableDefine(string typeName, object value)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected string GetTypeName(CsProperty csProperty)
+        private string GetTypeNameFrom(CsProperty csProperty)
         {
             switch (csProperty.TypeName)
             {

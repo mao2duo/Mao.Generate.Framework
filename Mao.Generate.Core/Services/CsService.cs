@@ -28,7 +28,7 @@ namespace Mao.Generate.Core.Services
         public ICollection<CsType> GetCsTypesFromCode(string programText)
         {
             return GetSyntaxNodesFromCode<ClassDeclarationSyntax>(programText)
-                .Select(x => ObjectResolver.TypeConvert<CsType>(x))
+                .Select(x => ObjectResolver.TypeConvert<ClassDeclarationSyntax, CsType>(x))
                 .ToList();
         }
         /// <summary>
@@ -37,7 +37,7 @@ namespace Mao.Generate.Core.Services
         public ICollection<CsEnum> GetCsEnumsFromCode(string programText)
         {
             return GetSyntaxNodesFromCode<EnumDeclarationSyntax>(programText)
-                .Select(x => ObjectResolver.TypeConvert<CsEnum>(x))
+                .Select(x => ObjectResolver.TypeConvert<EnumDeclarationSyntax, CsEnum>(x))
                 .ToList();
         }
 
