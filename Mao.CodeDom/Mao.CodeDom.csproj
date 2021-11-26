@@ -46,7 +46,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Interfaces\IExecutable.cs" />
     <Compile Include="Models\Code.cs" />
     <Compile Include="Models\CodeBlock.cs" />
     <Compile Include="Models\UnitSource.cs" />

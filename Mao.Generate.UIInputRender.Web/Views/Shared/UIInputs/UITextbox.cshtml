@@ -2,17 +2,10 @@
 @{
     UIContainer container = Model.Parameters["Container"] as UIContainer;
     UITextbox textbox = Model.Input;
-    string name = textbox.Name;
-    if (!string.IsNullOrWhiteSpace(name))
-    {
-        if (Model.Parameters.ContainsKey("Prefix"))
-        {
-            string prefix = Model.Parameters["Prefix"] as string;
-            if (!string.IsNullOrWhiteSpace(prefix))
-            {
-                name = $"{prefix.Trim('.')}.{name.Trim('.')}";
-            }
-        }
-    }
 }
-<input class="form-control" type="text" id="@container.Guid" name="@name" value="@textbox.Value" placeholder="@textbox.Placeholder" />
+<div class="col-md-12 form-group">
+    <label for="@container.Guid">@textbox.DisplayName</label>
+    <input class="form-control" type="text" id="@container.Guid" name="@textbox.Name" value="@textbox.Text" placeholder="@textbox.Placeholder" />
+</div>
+
+

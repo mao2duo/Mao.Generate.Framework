@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.Services
@@ -53,10 +54,26 @@ namespace Mao.Generate.Core.Services
             }
             return null;
         }
-
+        /// <summary>
+        /// 解析 &lt;summary&gt;&lt;/summary&gt; 內的文字
+        /// </summary>
         public string GetSummaryFromXml(string xml)
         {
-            throw new NotImplementedException();
+            Regex summaryRegex = new Regex(@"<summary>(?<text>((?!<\/summary>)[\S\s])*)<\/summary>", RegexOptions.IgnoreCase);
+            Regex breakRegex = new Regex(@"\n\s*\/\/\/\s*");
+            Regex paraRegex = new Regex(@"<para>(?<text>((?!<\/para>)[\S\s])*)<\/para>", RegexOptions.IgnoreCase);
+            // 先取得 <summary></summary> 之間的內容
+            var summaryMatch = summaryRegex.Match(xml);
+            if (summaryMatch.Success)
+            {
+                string summary = summaryMatch.Groups["text"].Value;
+                // 處理換行與「///」
+                summary = breakRegex.Replace(summary, x => "\n");
+                // 處理 <para><\/para>
+                summary = paraRegex.Replace(summary, x => x.Groups["text"].Value.Trim());
+                return summary.Trim();
+            }
+            return null;
         }
     }
 }

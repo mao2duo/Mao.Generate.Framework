@@ -6,17 +6,8 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.Models
 {
-    public class UIContainer : UIInput
+    public abstract class UIContainer : UIInput
     {
-        public UIContainerGenerateType GenerateType { get; set; }
         public List<UIInput> Children { get; } = new List<UIInput>();
-    }
-
-    public enum UIContainerGenerateType
-    {
-        None,
-        Value,
-        Object,
-        Array
     }
 }

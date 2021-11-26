@@ -1,8 +1,0 @@
-﻿@model HtmlInputViewModel<UILabel>
-@{
-    UIContainer container = Model.Parameters["Container"] as UIContainer;
-    UILabel label = Model.Input;
-}
-
-<label for="@container.Guid">@label.Text</label>
-

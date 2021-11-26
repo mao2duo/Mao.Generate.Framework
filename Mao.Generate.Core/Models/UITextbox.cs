@@ -6,9 +6,12 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.Models
 {
-    public class UITextbox : UIInput
+    public abstract class UITextbox : UIInput
     {
-        public string Placeholder { get; set; }
-        public string Value { get; set; }
+        public virtual string Text
+        {
+            get => Value as string;
+            set => Value = value;
+        }
     }
 }

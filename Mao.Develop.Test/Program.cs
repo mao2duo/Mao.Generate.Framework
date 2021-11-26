@@ -1,5 +1,4 @@
-﻿using Mao.CodeDom.Interfaces;
-using Mao.CodeDom.Services;
+﻿using Mao.CodeDom.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace Mao.Develop.Test
 {
-    public class Test1 : IExecutable
+    public class Test1
     {
         public void Execute()
         {
@@ -35,8 +34,8 @@ namespace Mao.Develop.Test
 }";
 
             var compiled = codeDomService.Compile(source);
-            var executable = codeDomService.CreateInstance<IExecutable>(compiled);
-            executable.Execute();
+            var executable = codeDomService.CreateInstance(compiled);
+            executable.GetType().GetMethod("Execute").Invoke(executable, null);
         }
     }
 }

@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.Models
 {
-    public class UICheckbox : UIInput
+    public abstract class UICheckbox : UIInput
     {
-        public object Value { get; set; }
-        public bool Checked { get; set; }
+        public virtual bool Checked { get; set; }
     }
 }

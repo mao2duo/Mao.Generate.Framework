@@ -2207,8 +2207,6 @@
     <Content Include="lib\popper.js-1.16.1\umd\popper.js.map" />
     <Content Include="lib\popper.js-1.16.1\umd\popper.min.js.map" />
     <None Include="packages.config" />
-    <Content Include="Views\Shared\UIInputs\UIContainer.cshtml" />
-    <Content Include="Views\Shared\UIInputs\UILabel.cshtml" />
     <Content Include="Views\Shared\UIInputs\UITextbox.cshtml" />
   </ItemGroup>
   <ItemGroup>

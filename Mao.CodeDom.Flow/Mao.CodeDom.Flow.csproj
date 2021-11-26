@@ -4,17 +4,16 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{2BFB8208-F5AA-4911-875C-35B61269EFE7}</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Mao.Develop.Test</RootNamespace>
-    <AssemblyName>Mao.Develop.Test</AssemblyName>
+    <ProjectGuid>{81CB214B-2995-40EF-8FEF-386ED78B41B5}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Mao.CodeDom.Flow</RootNamespace>
+    <AssemblyName>Mao.CodeDom.Flow</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -24,7 +23,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -43,22 +41,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Flow1.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="Interfaces\IFlow.cs" />
+    <Compile Include="Models\FlowBase.cs" />
+    <Compile Include="Models\FlowInputWrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Mao.CodeDom.Flow\Mao.CodeDom.Flow.csproj">
-      <Project>{81cb214b-2995-40ef-8fef-386ed78b41b5}</Project>
-      <Name>Mao.CodeDom.Flow</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Mao.CodeDom\Mao.CodeDom.csproj">
-      <Project>{97aa98f6-bd0d-47a0-9efb-9b74c4df09e4}</Project>
-      <Name>Mao.CodeDom</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Mao.Generate.Core\Mao.Generate.Core.csproj">
       <Project>{68746f1f-f655-4808-90e8-6f3522b32c16}</Project>
       <Name>Mao.Generate.Core</Name>

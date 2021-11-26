@@ -79,9 +79,9 @@ namespace Mao.CodeDom.Services
         /// <summary>
         /// 將編譯出來的類別建立成執行個體
         /// </summary>
-        public T CreateInstance<T>(UnitCompiled compiled, params object[] args)
+        public object CreateInstance(UnitCompiled compiled, params object[] args)
         {
-            return (T)Activator.CreateInstance(compiled.ResultType, args);
+            return Activator.CreateInstance(compiled.ResultType, args);
         }
     }
 }
