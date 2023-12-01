@@ -7,13 +7,21 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace Mao.Generate.Core.Services
 {
     public class SqlService
     {
+        /// <summary>
+        /// 取得連接字串預設連接的資料庫名稱
+        /// </summary>
+        public virtual string GetDefaultDatabaseName(string connectionString)
+        {
+            SqlConnectionStringBuilder connectionStringBuilder = new SqlConnectionStringBuilder();
+            connectionStringBuilder.ConnectionString = connectionString;
+            return connectionStringBuilder.InitialCatalog;
+        }
         /// <summary>
         /// 取得不包含系統資料庫的所有資料庫名稱
         /// </summary>
@@ -223,7 +231,7 @@ namespace Mao.Generate.Core.Services
             }
         }
         /// <summary>
-        /// 取得資料庫的關聯性
+        /// 取得資料表 Foreign Key 的關聯性
         /// </summary>
         public virtual SqlForeignKey[] GetSqlForeignKeys(string connectionString)
         {
@@ -243,6 +251,151 @@ namespace Mao.Generate.Core.Services
                            INNER JOIN sys.columns ref_c ON ref_c.object_id = ref_o.object_id AND ref_c.column_id = fkc.referenced_column_id 
                     WHERE  o.type = 'U' ").ToArray();
             }
+        }
+        /// <summary>
+        /// 取得資料庫物件的關聯性
+        /// </summary>
+        public virtual SqlObject[] GetSqlObjectReference(string connectionString)
+        {
+            SqlObject[] sqlObjects;
+            SqlConnectionStringBuilder connectionStringBuilder = new SqlConnectionStringBuilder();
+            connectionStringBuilder.ConnectionString = connectionString;
+            int loopPrevention = 5;
+            int loopCurrent = 0;
+            void FillReferences(SqlObject sqlObject)
+            {
+                loopCurrent++;
+                foreach (var dbReferences in sqlObject.Reference.GroupBy(x => x.DatabaseName))
+                {
+                    connectionStringBuilder.InitialCatalog = dbReferences.Key;
+                    try
+                    {
+                        DataTable dt;
+                        using (var conn = new SqlConnection(connectionStringBuilder.ConnectionString))
+                        {
+                            var reader = conn.ExecuteReader(@"
+                                SELECT o.[type]                       AS [ObjectType],
+                                       o.[type_desc]                  AS [ObjectTypeDesc],
+                                       o.[name]                       AS [ObjectName],
+                                       o.[object_id]                  AS [ObjectId],
+                                       ref.[referenced_database_name] AS [ReferencedDatabase],
+                                       ref.[referenced_entity_name]   AS [ReferencedName],
+                                       ref.[referenced_id]            AS [ReferencedId],
+                                       ref.[referenced_class]         AS [ReferencedClass],
+                                       ref.[referenced_class_desc]    AS [ReferencedClassDesc]
+                                FROM   sys.objects o
+                                       LEFT JOIN sys.sql_expression_dependencies ref ON ref.referencing_id = o.[object_id]
+                                WHERE  o.[name] IN @ObjectNames ",
+                                new
+                                {
+                                    ObjectNames = dbReferences.Select(x => x.ObjectName).ToList()
+                                });
+                            dt = new DataTable();
+                            dt.Load(reader);
+                        }
+                        foreach (var group in dt.Rows.Cast<DataRow>()
+                            .GroupBy(row => new
+                            {
+                                ObjectType = row["ObjectType"] as string,
+                                ObjectTypeDesc = row["ObjectTypeDesc"] as string,
+                                ObjectName = row["ObjectName"] as string,
+                                ObjectId = row["ObjectId"] as string
+                            }))
+                        {
+                            var dbReference = dbReferences.First(x => x.ObjectName.Equals(group.Key.ObjectName, StringComparison.OrdinalIgnoreCase));
+                            dbReference.ObjectType = group.Key.ObjectType?.TrimEnd();
+                            dbReference.Reference = group
+                                .Where(row => row["ReferencedName"] != DBNull.Value)
+                                .Select(row => new SqlObject()
+                                {
+                                    DatabaseName = row["ReferencedDatabase"] as string ?? dbReference.DatabaseName,
+                                    ObjectName = row["ReferencedName"] as string,
+                                    Class = (byte)row["ReferencedClass"],
+                                    ClassDesc = row["ReferencedClassDesc"] as string
+                                })
+                                .ToList();
+                            if (loopCurrent < loopPrevention)
+                            {
+                                FillReferences(dbReference);
+                            }
+                        }
+                    }
+                    catch (SqlException ex)
+                    {
+                        foreach (var dbReference in dbReferences)
+                        {
+                            dbReference.ErrorMessage = ex.Message;
+                        }
+                    }
+                }
+                loopCurrent--;
+            }
+
+            //connectionStringBuilder.TrustServerCertificate = true;
+            using (var conn = new SqlConnection(connectionStringBuilder.ConnectionString))
+            {
+                var reader = conn.ExecuteReader(@"
+                    SELECT o.[type]                       AS [ObjectType],
+                           o.[type_desc]                  AS [ObjectTypeDesc],
+                           o.[name]                       AS [ObjectName],
+                           o.[object_id]                  AS [ObjectId],
+                           ref.[referenced_database_name] AS [ReferencedDatabase],
+                           ref.[referenced_entity_name]   AS [ReferencedName],
+                           ref.[referenced_id]            AS [ReferencedId],
+                           ref.[referenced_class]         AS [ReferencedClass],
+                           ref.[referenced_class_desc]    AS [ReferencedClassDesc]
+                    FROM   sys.objects o
+                           LEFT JOIN sys.sql_expression_dependencies ref ON ref.referencing_id = o.[object_id]
+                    WHERE  o.[type] IN ( 'V', 'P', 'IF', 'FN' ) ");
+                var dt = new DataTable();
+                dt.Load(reader);
+                sqlObjects = dt.Rows.Cast<DataRow>()
+                    .GroupBy(row => new
+                    {
+                        ObjectType = row["ObjectType"] as string,
+                        ObjectTypeDesc = row["ObjectTypeDesc"] as string,
+                        ObjectName = row["ObjectName"] as string,
+                        ObjectId = row["ObjectId"] as string
+                    })
+                    .Select(group => new SqlObject()
+                    {
+                        DatabaseName = connectionStringBuilder.InitialCatalog,
+                        ObjectType = group.Key.ObjectType?.TrimEnd(),
+                        ObjectTypeDesc = group.Key.ObjectTypeDesc?.TrimEnd(),
+                        ObjectName = group.Key.ObjectName,
+                        Reference = group
+                            .Where(row => row["ReferencedName"] != DBNull.Value)
+                            .Select(row => new SqlObject()
+                            {
+                                DatabaseName = row["ReferencedDatabase"] as string ?? connectionStringBuilder.InitialCatalog,
+                                ObjectName = row["ReferencedName"] as string,
+                                Class = (byte)row["ReferencedClass"],
+                                ClassDesc = row["ReferencedClassDesc"] as string
+                            }).ToList()
+                    })
+                    .OrderBy(x =>
+                    {
+                        switch (x.ObjectType)
+                        {
+                            case "V":
+                                return "0";
+                            case "P":
+                                return "1";
+                            case "IF":
+                                return "2";
+                            case "FN":
+                                return "3";
+                        }
+                        return x.ObjectType;
+                    })
+                    .ThenBy(x => x.ObjectName)
+                    .ToArray();
+            }
+            foreach (var sqlObject in sqlObjects)
+            {
+                FillReferences(sqlObject);
+            }
+            return sqlObjects;
         }
 
         /// <summary>

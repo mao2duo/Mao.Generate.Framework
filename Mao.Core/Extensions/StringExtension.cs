@@ -97,13 +97,17 @@ namespace System
         /// <summary>
         /// 轉換成以小寫開頭的駝峰命名
         /// </summary>
-        public static string ToLowerCamelCase(this string name)
+        public static string ToLowerCamelCase(this string name, string separator = null)
         {
             Regex symbolWordRegex = new Regex(@"[^A-Za-z0-9]+(?<word>[A-Za-z0-9])");
             Regex firstWordRegex = new Regex(@"^[^A-Za-z]*(?<word>[A-Za-z0-9])");
             if (symbolWordRegex.IsMatch(name))
             {
-                name = symbolWordRegex.Replace(name.ToLower(), match => match.Groups["word"].Value.ToUpper());
+                name = symbolWordRegex.Replace(name.ToLower(), match => $"{separator}{match.Groups["word"].Value.ToUpper()}");
+            }
+            else
+            {
+                name = name.ToLower();
             }
             if (firstWordRegex.IsMatch(name))
             {
@@ -114,13 +118,17 @@ namespace System
         /// <summary>
         /// 轉換成以大寫開頭的駝峰命名
         /// </summary>
-        public static string ToUpperCamelCase(this string name)
+        public static string ToUpperCamelCase(this string name, string separator = null)
         {
             Regex symbolWordRegex = new Regex(@"[^A-Za-z0-9]+(?<word>[A-Za-z0-9])");
             Regex firstWordRegex = new Regex(@"^[^A-Za-z]*(?<word>[A-Za-z0-9])");
             if (symbolWordRegex.IsMatch(name))
             {
-                name = symbolWordRegex.Replace(name.ToLower(), match => match.Groups["word"].Value.ToUpper());
+                name = symbolWordRegex.Replace(name.ToLower(), match => $"{separator}{match.Groups["word"].Value.ToUpper()}");
+            }
+            else
+            {
+                name = name.ToLower();
             }
             if (firstWordRegex.IsMatch(name))
             {

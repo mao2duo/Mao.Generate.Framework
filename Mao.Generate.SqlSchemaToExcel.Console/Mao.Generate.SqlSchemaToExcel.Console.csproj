@@ -55,6 +55,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Mao.Core\Mao.Core.csproj">
+      <Project>{6fbdbc11-b474-4434-8781-0a0aa6c3dc92}</Project>
+      <Name>Mao.Core</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Mao.Generate.Core\Mao.Generate.Core.csproj">
       <Project>{68746f1f-f655-4808-90e8-6f3522b32c16}</Project>
       <Name>Mao.Generate.Core</Name>

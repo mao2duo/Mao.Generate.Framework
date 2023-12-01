@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Mao.Generate.Core.Services;
 
 namespace Mao.Generate.SqlSchemaToExcel.Console
@@ -26,21 +25,22 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         const bool isRemoteMode = false;
         /// <summary>
         /// 資料交換的目錄位置
-        /// <para>isRemoteMode = true 才需要設定</para>
+        /// <para><see cref="isRemoteMode"/> = true 才需要設定</para>
         /// </summary>
         const string remoteDataExchangePath = @"D:\Temp\Exchange";
         /// <summary>
         /// 要匯出資料結構的資料庫的的連接字串
-        /// <para>isRemoteMode = false 才需要設定</para>
+        /// <para><see cref="isRemoteMode"/> = false 才需要設定</para>
         /// </summary>
-        const string connectionString = @"";
+        const string connectionString = @"server=AUOHQHRMTT01;database=eCareerJourney;uid=ueCareerJourney;pwd=ueCareerJourney";
         /// <summary>
         /// 匯出檔案要儲存的位置及名稱
         /// </summary>
-        const string exportFilePathFormat = @"D:\Temp\DbSchema-{0:yyyy-MM-dd HH_mm_ss}.xlsx";
+        const string exportFilePathFormat = @"D:\KaiHuangAres\Temp\DbSchema-{0:yyyy-MM-dd HH_mm_ss}.xlsx";
 
         const string sheet1Name = "清單";
         const string sheet2Name = "系統主表";
+        const string sheet3Name = "物件關聯";
 
         private readonly SqlService _sqlService;
         public App()
@@ -72,17 +72,31 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 new SqlService();
         }
 
+        private string databaseName;
         private SqlTable[] sqlTables;
         private SqlView[] sqlViews;
         private SqlProcedure[] sqlProcedures;
+        private SqlObject[] sqlObjects;
+
+        private Dictionary<SqlObject, int> sqlObjectWidthCache = new Dictionary<SqlObject, int>();
+        private Dictionary<SqlObject, int> sqlObjectHeightCache = new Dictionary<SqlObject, int>();
+        private Dictionary<string, string> toListTableLinkAddressCache = new Dictionary<string, string>();
+        private Dictionary<string, string> toListViewLinkAddressCache = new Dictionary<string, string>();
+        private Dictionary<string, string> toListProcedureLinkAddressCache = new Dictionary<string, string>();
+        private Dictionary<string, string> tableLinkAddressCache = new Dictionary<string, string>();
+        private Dictionary<string, string> viewLinkAddressCache = new Dictionary<string, string>();
+        private Dictionary<string, string> procedureLinkAddressCache = new Dictionary<string, string>();
+
         /// <summary>
         /// 預先載入資料
         /// </summary>
         protected void Preloading()
         {
+            databaseName = _sqlService.GetDefaultDatabaseName(connectionString);
             sqlTables = _sqlService.GetSqlTables(connectionString) ?? new SqlTable[0];
             sqlViews = _sqlService.GetSqlViews(connectionString) ?? new SqlView[0];
             sqlProcedures = _sqlService.GetSqlProcedures(connectionString) ?? new SqlProcedure[0];
+            sqlObjects = _sqlService.GetSqlObjectReference(connectionString) ?? new SqlObject[0];
         }
         /// <summary>
         /// 主程序
@@ -107,8 +121,13 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 // 系統主表
                 worksheet = workbook.Worksheets.Add(After: workbook.Sheets[workbook.Sheets.Count]);
                 FillSheet2(worksheet);
+                // 物件關聯
+                worksheet = workbook.Worksheets.Add(After: workbook.Sheets[workbook.Sheets.Count]);
+                FillSheet3(worksheet);
                 // 把原先僅剩的 Sheet 移除
                 workbook.Worksheets[1].Delete();
+                // 讓 Excel 打開顯示第一個 Sheet
+                workbook.Worksheets[1].Activate();
                 // 儲存成檔案
                 workbook.SaveAs(string.Format(exportFilePathFormat, DateTime.Now));
             }
@@ -152,7 +171,6 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
             rowIndex++;
             // 資料表名稱 列表
             int num = 1;
-            int linkIndex = 1;
             foreach (var sqlTable in sqlTables)
             {
                 // 設定列高
@@ -165,8 +183,8 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                     worksheet.Cells[rowIndex, 2],
                     // 連結目標在同一個檔案內不用給值
                     "",
-                    // 連結位置 (+2 = 回清單 + 標題列)
-                    $"{sheet2Name}!B{linkIndex + 2}:B{linkIndex + 2 + sqlTable.Columns.Length - 1}",
+                    // 連結位置
+                    GetTableAddress(databaseName, sqlTable.Name),
                     // 連結文字 (資料表名稱)
                     TextToDisplay: sqlTable.Name);
                 // 設定連結字體會跑掉，需要重設
@@ -180,8 +198,6 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 rowIndex++;
 
                 num++;
-                // (+5 = 回清單 + 標題列 + 資料表說明行 + 建立索引語法行 + 間隔)
-                linkIndex += sqlTable.Columns.Length + 5;
             }
             #endregion
 
@@ -219,7 +235,32 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 range.RowHeight = 20.1;
                 // 行數
                 worksheet.Cells[rowIndex, 1] = num;
-                worksheet.Cells[rowIndex, 2] = sqlView.Name;
+                // 檢視名稱
+                // 取得連結
+                var linkAddress = GetViewAddress(databaseName, sqlView.Name);
+                if (string.IsNullOrEmpty(linkAddress))
+                {
+                    // 沒有連結直接顯示檢視名稱
+                    worksheet.Cells[rowIndex, 2] = sqlView.Name;
+                }
+                else
+                {
+                    // 有連結為檢視名稱加上連結
+                    Excel.Hyperlink hyperlink = worksheet.Hyperlinks.Add(
+                        worksheet.Cells[rowIndex, 2],
+                        // 連結目標在同一個檔案內不用給值
+                        "",
+                        // 連結位置
+                        linkAddress,
+                        // 連結文字 (檢視名稱)
+                        TextToDisplay: sqlView.Name);
+                    // 設定連結字體會跑掉，需要重設
+                    range = hyperlink.Range;
+                    range.Font.Name = "微軟正黑體";
+                    range.Font.Bold = true;
+                    // 檢視名稱 文字顏色
+                    range.Font.Color = RGB(0, 112, 192);
+                }
                 worksheet.Cells[rowIndex, 3] = sqlView.Description;
                 rowIndex++;
                 num++;
@@ -260,7 +301,32 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 range.RowHeight = 20.1;
                 // 行數
                 worksheet.Cells[rowIndex, 1] = num;
-                worksheet.Cells[rowIndex, 2] = sqlProcedure.Name;
+                // 預存程序名稱
+                // 取得連結
+                var linkAddress = GetProcedureAddress(databaseName, sqlProcedure.Name);
+                if (string.IsNullOrEmpty(linkAddress))
+                {
+                    // 沒有連結直接顯示預存程序名稱
+                    worksheet.Cells[rowIndex, 2] = sqlProcedure.Name;
+                }
+                else
+                {
+                    // 有連結為預存程序名稱加上連結
+                    Excel.Hyperlink hyperlink = worksheet.Hyperlinks.Add(
+                        worksheet.Cells[rowIndex, 2],
+                        // 連結目標在同一個檔案內不用給值
+                        "",
+                        // 連結位置
+                        linkAddress,
+                        // 連結文字 (預存程序名稱)
+                        TextToDisplay: sqlProcedure.Name);
+                    // 設定連結字體會跑掉，需要重設
+                    range = hyperlink.Range;
+                    range.Font.Name = "微軟正黑體";
+                    range.Font.Bold = true;
+                    // 預存程序名稱 文字顏色
+                    range.Font.Color = RGB(0, 112, 192);
+                }
                 worksheet.Cells[rowIndex, 3] = sqlProcedure.Description;
                 rowIndex++;
                 num++;
@@ -279,18 +345,16 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
             int rowIndex = 1;
             Excel.Range range;
 
-            int linkIndex = 1;
             foreach (var sqlTable in sqlTables)
             {
-                worksheet.Cells[rowIndex, 2] = "回清單";
                 // 回清單 連結
                 Excel.Hyperlink hyperlink = worksheet.Hyperlinks.Add(
                     worksheet.Cells[rowIndex, 2],
                     // 連結目標在同一個檔案內不用給值
                     "",
-                    // 連結位置 (+1 = 標題列)
-                    $"{sheet1Name}!B{linkIndex + 1}",
-                    // 連結文字 (資料表名稱)
+                    // 連結位置
+                    GetTableToListAddress(databaseName, sqlTable.Name),
+                    // 連結文字
                     TextToDisplay: "回清單");
                 // 設定連結字體會跑掉，需要重設
                 range = hyperlink.Range;
@@ -311,12 +375,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 range.Font.Size = 10;
                 range.Font.Bold = true;
 
-                worksheet.Cells[rowIndex, 2] = "Table Name";
-                worksheet.Cells[rowIndex, 3] = "Column";
-                worksheet.Cells[rowIndex, 4] = "Data_type";
-                worksheet.Cells[rowIndex, 5] = "null";
-                worksheet.Cells[rowIndex, 6] = "Chinese Remark";
-                worksheet.Cells[rowIndex, 7] = "SAMPLE";
+                // 標題列
                 range = worksheet.Range[$"B{rowIndex}", $"G{rowIndex}"];
                 // 標題列置中
                 range.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
@@ -324,6 +383,13 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 range.Font.Color = RGB(155, 0, 128);
                 // 標題列背景色
                 range.Interior.Color = RGB(204, 255, 204);
+                // 標題列文字
+                worksheet.Cells[rowIndex, 2] = "Table Name";
+                worksheet.Cells[rowIndex, 3] = "Column";
+                worksheet.Cells[rowIndex, 4] = "Data_type";
+                worksheet.Cells[rowIndex, 5] = "null";
+                worksheet.Cells[rowIndex, 6] = "Chinese Remark";
+                worksheet.Cells[rowIndex, 7] = "SAMPLE";
                 rowIndex++;
 
                 // 資料表名稱
@@ -372,9 +438,198 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
 
                 // 資料表之間空一行
                 rowIndex++;
-
-                linkIndex++;
             }
+
+            worksheet.Columns.AutoFit();
+        }
+
+        /// <summary>
+        /// 第 3 個 Sheet 的內容 (物件關聯)
+        /// </summary>
+        private void FillSheet3(Excel.Worksheet worksheet)
+        {
+            worksheet.Name = sheet3Name;
+
+            Excel.Range range;
+
+            // sqlObjects 總共會用到幾欄
+            int columnWidth = sqlObjects.Max(GetWidth);
+            // 從第幾個列開始寫入 sqlObjects
+            const int startRowIndex = 1;
+            // 從第幾個欄開始寫入 sqlObjects
+            const int startColunmIndex = 2;
+
+            // 將多個 SqlObject 寫入 Worksheet 的邏輯
+            void FillSqlObjects(IEnumerable<SqlObject> sqlObjects, int rowIndex, int columnIndex)
+            {
+                if (sqlObjects != null && sqlObjects.Any())
+                {
+                    foreach (var sqlObject in sqlObjects)
+                    {
+                        if (startColunmIndex < columnIndex || sqlObject.Reference != null && sqlObject.Reference.Any())
+                        {
+                            FillSqlObject(sqlObject, rowIndex, columnIndex);
+                            rowIndex += GetHeight(sqlObject);
+                            if (startColunmIndex == columnIndex)
+                            {
+                                // +回清單
+                                if (!string.IsNullOrEmpty(GetObjectToListAddress(sqlObject)))
+                                {
+                                    rowIndex++;
+                                }
+                                // +標題列 +說明列 +空行
+                                rowIndex += 3;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 將一個 SqlObject 寫入 Worksheet 的邏輯
+            void FillSqlObject(SqlObject sqlObject, int rowIndex, int columnIndex)
+            {
+                int rowspan = GetHeight(sqlObject);
+                int colspan = sqlObject.Reference != null && sqlObject.Reference.Any() ? 1 : (columnWidth - columnIndex + startColunmIndex);
+
+                #region 第一層物件前置作業
+                if (startColunmIndex == columnIndex)
+                {
+                    // 回清單
+                    var toListAddress = GetObjectToListAddress(sqlObject);
+                    if (!string.IsNullOrEmpty(toListAddress))
+                    {
+                        // 回清單 連結
+                        Excel.Hyperlink hyperlink = worksheet.Hyperlinks.Add(
+                            worksheet.Cells[rowIndex, columnIndex],
+                            // 連結目標在同一個檔案內不用給值
+                            "",
+                            // 連結位置
+                            toListAddress,
+                            // 連結文字
+                            TextToDisplay: "回清單");
+                        // 設定連結字體會跑掉，需要重設
+                        range = hyperlink.Range;
+                        range.Font.Name = "微軟正黑體";
+                        range.Font.Bold = true;
+                        // 回清單 框線
+                        range.Cells.Borders.LineStyle = Excel.XlLineStyle.xlContinuous;
+                        rowIndex++;
+                    }
+
+                    // 物件區塊 (+2 = +標題列 +說明列)
+                    range = worksheet.Range[GetAddress(rowIndex, columnIndex), GetAddress(rowIndex + rowspan - 1 + 2, columnIndex + columnWidth - 1)];
+                    // 物件區塊 框線
+                    range.Cells.Borders.LineStyle = Excel.XlLineStyle.xlContinuous;
+                    // 物件區塊 外框線
+                    //range.BorderAround(Type.Missing, Excel.XlBorderWeight.xlThin, Excel.XlColorIndex.xlColorIndexAutomatic, Type.Missing);
+                    // 物件區塊 垂直置中
+                    range.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
+                    // 物件區塊 字體
+                    range.Font.Name = "微軟正黑體";
+                    range.Font.Size = 10;
+
+                    // 標題列
+                    range = worksheet.Range[GetAddress(rowIndex, columnIndex), GetAddress(rowIndex, columnIndex + columnWidth - 1)];
+                    // 標題列 水平置中
+                    range.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
+                    // 標題列 粗體
+                    range.Font.Bold = true;
+                    // 標題列 文字顏色
+                    range.Font.Color = RGB(155, 0, 128);
+                    // 標題列 背景色
+                    range.Interior.Color = RGB(204, 255, 204);
+                    // 標題列 文字
+                    worksheet.Cells[rowIndex, columnIndex] = $"{sqlObject.ObjectTypeDesc.ToUpperCamelCase(" ")} Name";
+                    worksheet.Cells[rowIndex, columnIndex + 1] = "Reference";
+                    // 標題列 Reference 合併儲存格
+                    range = worksheet.Range[GetAddress(rowIndex, columnIndex + 1), GetAddress(rowIndex, columnIndex + columnWidth - 1)];
+                    range.Merge();
+                    rowIndex++;
+                }
+                #endregion
+
+                range = worksheet.Range[GetAddress(rowIndex, columnIndex), GetAddress(rowIndex + rowspan - 1, columnIndex + colspan - 1)];
+                // 合併儲存格
+                if (rowspan > 1 || colspan > 1)
+                {
+                    range.Merge();
+                }
+
+                if (startColunmIndex == columnIndex)
+                {
+                    // 第一層物件不用顯示資料表名稱
+                    range.Value = $"{sqlObject.ObjectName} {sqlObject.ErrorMessage}";
+                    range.Font.Bold = true;
+                    range.Characters[sqlObject.ObjectName.Length + 2].Font.Color = RGB(230, 95, 90);
+                }
+                else
+                {
+                    // 顯示文字 = Alias + 資料表名稱 + dbo + 物件名稱
+                    string alias = $"[{sqlObject.ObjectAlias}]";
+                    string schema = "dbo";
+                    string displayText = $"{alias} {sqlObject.DatabaseName}.{schema}.{sqlObject.ObjectName} {sqlObject.ErrorMessage}";
+                    string linkAddress = startColunmIndex < columnIndex ? GetObjectAddress(sqlObject) : null;
+                    if (string.IsNullOrEmpty(linkAddress))
+                    {
+                        // 沒有連結直接顯示文字
+                        range.Value = displayText;
+                    }
+                    else
+                    {
+                        // 有連結為顯示文字加上連結
+                        Excel.Hyperlink hyperlink = worksheet.Hyperlinks.Add(
+                            range,
+                            // 連結目標在同一個檔案內不用給值
+                            "",
+                            // 連結位置
+                            linkAddress,
+                            // 連結文字
+                            TextToDisplay: displayText);
+                        // 設定連結字體會跑掉，需要重設
+                        range = hyperlink.Range;
+                        range.Font.Name = "微軟正黑體";
+                        range.Font.Size = 10;
+                    }
+                    // 把 alias 字體縮小
+                    int aliasLength = alias.Length;
+                    //range.Characters[1, aliasLength].Font.Size = 8;
+                    range.Characters[1, aliasLength].Font.Color = RGB(65, 65, 65);
+                    // 區別 資料表名稱 dbo 物件名稱 文字顏色
+                    int databaseNameLength = sqlObject.DatabaseName.Length;
+                    int schemaLength = schema.Length;
+                    int objectNameLength = sqlObject.ObjectName.Length;
+                    range.Characters[aliasLength + 2, databaseNameLength].Font.Color = RGB(20, 120, 145);
+                    range.Characters[aliasLength + databaseNameLength + 3, schemaLength].Font.Color = RGB(100, 60, 150);
+                    range.Characters[aliasLength + databaseNameLength + schemaLength + 4, objectNameLength].Font.Color = RGB(0, 80, 135);
+                    range.Characters[aliasLength + databaseNameLength + schemaLength + objectNameLength + 5].Font.Color = RGB(230, 95, 90);
+                }
+                if (!string.IsNullOrEmpty(sqlObject.ErrorMessage))
+                {
+                    range.RowHeight = 33;
+                }
+
+                // 展開關聯物件
+                FillSqlObjects(sqlObject.Reference, rowIndex, columnIndex + colspan);
+                rowIndex += rowspan;
+
+                #region 第一層物件後置作業
+                if (startColunmIndex == columnIndex)
+                {
+                    // 物件說明
+                    worksheet.Cells[rowIndex, columnIndex] = $"{sqlObject.ObjectAlias}說明";
+                    // 說明列 背景色
+                    range = worksheet.Range[GetAddress(rowIndex, columnIndex), GetAddress(rowIndex, columnIndex + columnWidth - 1)];
+                    range.Interior.Color = RGB(240, 240, 240);
+                    // 說明列 空白區塊 合併儲存格
+                    range = worksheet.Range[GetAddress(rowIndex, columnIndex + 1), GetAddress(rowIndex, columnIndex + columnWidth - 1)];
+                    range.Merge();
+
+                    rowIndex++;
+                }
+                #endregion
+            }
+
+            FillSqlObjects(sqlObjects, startRowIndex, startColunmIndex);
 
             worksheet.Columns.AutoFit();
         }
@@ -382,6 +637,277 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         private int RGB(int r, int g, int b)
         {
             return r + g * 256 + b * 256 * 256;
+        }
+
+        /// <summary>
+        /// 將數字轉成 Excel 欄位用的 A B C
+        /// </summary>
+        private string GetAddress(int columnIndex)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            while (columnIndex > 0)
+            {
+                int modulo = (columnIndex - 1) % 26;
+                stringBuilder.Insert(0, Convert.ToChar('A' + modulo));
+                columnIndex = (columnIndex - modulo) / 26;
+            }
+            return stringBuilder.ToString();
+        }
+        /// <summary>
+        /// 將數字轉成 Excel 欄位 A1 A2 B1 B2
+        /// </summary>
+        private string GetAddress(int rowIndex, int columnIndex)
+        {
+            return $"{GetAddress(columnIndex)}{rowIndex}";
+        }
+        /// <summary>
+        /// 取得 <see cref="SqlObject"/> 包含 Reference 總共需要寫入幾欄
+        /// </summary>
+        private int GetWidth(SqlObject sqlObject)
+        {
+            if (!sqlObjectWidthCache.ContainsKey(sqlObject))
+            {
+                int width = 1;
+                if (sqlObject.Reference != null && sqlObject.Reference.Any())
+                {
+                    width = sqlObject.Reference.Max(GetWidth) + 1;
+                }
+                sqlObjectWidthCache.Add(sqlObject, width);
+            }
+            return sqlObjectWidthCache[sqlObject];
+        }
+        /// <summary>
+        /// 取得 <see cref="SqlObject"/> 包含 Reference 總共需要寫入幾列
+        /// </summary>
+        private int GetHeight(SqlObject sqlObject)
+        {
+            if (!sqlObjectHeightCache.ContainsKey(sqlObject))
+            {
+                int height = 1;
+                if (sqlObject.Reference != null && sqlObject.Reference.Any())
+                {
+                    height = sqlObject.Reference.Sum(GetHeight);
+                }
+                sqlObjectHeightCache.Add(sqlObject, height);
+            }
+            return sqlObjectHeightCache[sqlObject];
+        }
+
+        /// <summary>
+        /// 取得 <see cref="SqlObject"/> 回清單連結
+        /// </summary>
+        private string GetObjectToListAddress(SqlObject sqlObject)
+        {
+            switch (sqlObject.ObjectType)
+            {
+                case "U":
+                    return GetTableToListAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                case "V":
+                    return GetViewToListAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                case "P":
+                    return GetProcedureToListAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+            }
+            return null;
+        }
+        /// <summary>
+        /// 取得資料表回清單連結
+        /// </summary>
+        private string GetTableToListAddress(string databaseName, string tableName)
+        {
+            string cacheKey = $"{databaseName}.dbo.{tableName}";
+            if (!toListTableLinkAddressCache.ContainsKey(cacheKey))
+            {
+                string linkAddress = null;
+                if (databaseName == this.databaseName)
+                {
+                    // 從 1 開始 +資料表標題列
+                    int linkIndex = 1 + 1;
+                    foreach (var sqlTable in sqlTables)
+                    {
+                        if (sqlTable.Name == tableName)
+                        {
+                            linkAddress = $"{sheet1Name}!B{linkIndex}";
+                            break;
+                        }
+                        linkIndex++;
+                    }
+                }
+                toListTableLinkAddressCache.Add(cacheKey, linkAddress);
+            }
+            return toListTableLinkAddressCache[cacheKey];
+        }
+        /// <summary>
+        /// 取得檢視回清單連結
+        /// </summary>
+        private string GetViewToListAddress(string databaseName, string viewName)
+        {
+            string cacheKey = $"{databaseName}.dbo.{viewName}";
+            if (!toListViewLinkAddressCache.ContainsKey(cacheKey))
+            {
+                string linkAddress = null;
+                if (databaseName == this.databaseName)
+                {
+                    // 從 1 開始 +資料表標題列 +資料表數量 +空行 +檢視標題列
+                    int linkIndex = 1 + 1 + sqlTables.Length + 2;
+                    foreach (var sqlView in sqlViews)
+                    {
+                        if (sqlView.Name == viewName)
+                        {
+                            linkAddress = $"{sheet1Name}!B{linkIndex}";
+                            break;
+                        }
+                        linkIndex++;
+                    }
+                }
+                toListViewLinkAddressCache.Add(cacheKey, linkAddress);
+            }
+            return toListViewLinkAddressCache[cacheKey];
+        }
+        /// <summary>
+        /// 取得預存程序回清單連結
+        /// </summary>
+        private string GetProcedureToListAddress(string databaseName, string procedureName)
+        {
+            string cacheKey = $"{databaseName}.dbo.{procedureName}";
+            if (!toListProcedureLinkAddressCache.ContainsKey(cacheKey))
+            {
+                string linkAddress = null;
+                if (databaseName == this.databaseName)
+                {
+                    // 從 1 開始 +資料表標題列 +資料表數量 +空行 +檢視標題列 +檢視數量 +空行 +預存程序標題列
+                    int linkIndex = 1 + 1 + sqlTables.Length + 2 + sqlViews.Length + 2;
+                    foreach (var sqlProcedure in sqlProcedures)
+                    {
+                        if (sqlProcedure.Name == procedureName)
+                        {
+                            linkAddress = $"{sheet1Name}!B{linkIndex}";
+                            break;
+                        }
+                        linkIndex++;
+                    }
+                }
+                toListProcedureLinkAddressCache.Add(cacheKey, linkAddress);
+            }
+            return toListProcedureLinkAddressCache[cacheKey];
+        }
+
+        /// <summary>
+        /// 取得 <see cref="SqlObject"/> 的連結
+        /// </summary>
+        private string GetObjectAddress(SqlObject sqlObject)
+        {
+            switch (sqlObject.ObjectType)
+            {
+                case "U":
+                    return GetTableAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                case "V":
+                    return GetViewAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                case "P":
+                    return GetProcedureAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+            }
+            return null;
+        }
+        /// <summary>
+        /// 取得資料表的連結
+        /// </summary>
+        private string GetTableAddress(string databaseName, string tableName)
+        {
+            string cacheKey = $"{databaseName}.dbo.{tableName}";
+            if (!tableLinkAddressCache.ContainsKey(cacheKey))
+            {
+                string linkAddress = null;
+                if (databaseName == this.databaseName)
+                {
+                    int linkIndex = 1;
+                    foreach (var sqlTable in sqlTables)
+                    {
+                        if (sqlTable.Name == tableName)
+                        {
+                            // 連結位置 (+2 = 回清單 + 標題列)
+                            linkAddress = $"{sheet2Name}!B{linkIndex + 2}:B{linkIndex + 2 + sqlTable.Columns.Length - 1}";
+                            break;
+                        }
+                        // (+5 = 回清單 + 標題列 + 資料表說明行 + 建立索引語法行 + 間隔)
+                        linkIndex += sqlTable.Columns.Length + 5;
+                    }
+                }
+                tableLinkAddressCache.Add(cacheKey, linkAddress);
+            }
+            return tableLinkAddressCache[cacheKey];
+        }
+        /// <summary>
+        /// 取得檢視的連結
+        /// </summary>
+        private string GetViewAddress(string databaseName, string viewName)
+        {
+            string cacheKey = $"{databaseName}.dbo.{viewName}";
+            if (!viewLinkAddressCache.ContainsKey(cacheKey))
+            {
+                string linkAddress = null;
+                var sqlViewObject = sqlObjects.FirstOrDefault(x => x.ObjectType == "V" && x.DatabaseName == databaseName && x.ObjectName == viewName);
+                if (sqlViewObject != null)
+                {
+                    int linkIndex = 1;
+                    foreach (var sqlObject in sqlObjects)
+                    {
+                        if (sqlObject.Reference != null && sqlObject.Reference.Any())
+                        {
+                            if (sqlObject == sqlViewObject)
+                            {
+                                linkAddress = $"{sheet3Name}!B{linkIndex + 2}";
+                                break;
+                            }
+                            linkIndex += GetHeight(sqlObject);
+                            // +回清單
+                            if (!string.IsNullOrEmpty(GetObjectToListAddress(sqlObject)))
+                            {
+                                linkIndex++;
+                            }
+                            // +標題列 +說明列 +空行
+                            linkIndex += 3;
+                        }
+                    }
+                }
+                viewLinkAddressCache.Add(cacheKey, linkAddress);
+            }
+            return viewLinkAddressCache[cacheKey];
+        }
+        /// <summary>
+        /// 取得預存程序的連結
+        /// </summary>
+        private string GetProcedureAddress(string databaseName, string procedureName)
+        {
+            string cacheKey = $"{databaseName}.dbo.{procedureName}";
+            if (!procedureLinkAddressCache.ContainsKey(cacheKey))
+            {
+                string linkAddress = null;
+                var sqlProcedureObject = sqlObjects.FirstOrDefault(x => x.ObjectType == "P" && x.DatabaseName == databaseName && x.ObjectName == procedureName);
+                if (sqlProcedureObject != null)
+                {
+                    int linkIndex = 1;
+                    foreach (var sqlObject in sqlObjects)
+                    {
+                        if (sqlObject.Reference != null && sqlObject.Reference.Any())
+                        {
+                            if (sqlObject == sqlProcedureObject)
+                            {
+                                linkAddress = $"{sheet3Name}!B{linkIndex + 2}";
+                                break;
+                            }
+                            linkIndex += GetHeight(sqlObject);
+                            // +回清單
+                            if (!string.IsNullOrEmpty(GetObjectToListAddress(sqlObject)))
+                            {
+                                linkIndex++;
+                            }
+                            // +標題列 +說明列 +空行
+                            linkIndex += 3;
+                        }
+                    }
+                }
+                procedureLinkAddressCache.Add(cacheKey, linkAddress);
+            }
+            return procedureLinkAddressCache[cacheKey];
         }
     }
 }
