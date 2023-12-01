@@ -32,11 +32,11 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         /// 要匯出資料結構的資料庫的的連接字串
         /// <para><see cref="isRemoteMode"/> = false 才需要設定</para>
         /// </summary>
-        const string connectionString = @"server=AUOHQHRMTT01;database=eCareerJourney;uid=ueCareerJourney;pwd=ueCareerJourney";
+        const string connectionString = @"";
         /// <summary>
         /// 匯出檔案要儲存的位置及名稱
         /// </summary>
-        const string exportFilePathFormat = @"D:\KaiHuangAres\Temp\DbSchema-{0:yyyy-MM-dd HH_mm_ss}.xlsx";
+        const string exportFilePathFormat = @"D:\Temp\DbSchema-{0:yyyy-MM-dd HH_mm_ss}.xlsx";
 
         const string sheet1Name = "清單";
         const string sheet2Name = "系統主表";
@@ -590,14 +590,12 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                         range.Font.Name = "微軟正黑體";
                         range.Font.Size = 10;
                     }
-                    // 把 alias 字體縮小
-                    int aliasLength = alias.Length;
-                    //range.Characters[1, aliasLength].Font.Size = 8;
-                    range.Characters[1, aliasLength].Font.Color = RGB(65, 65, 65);
                     // 區別 資料表名稱 dbo 物件名稱 文字顏色
+                    int aliasLength = alias.Length;
                     int databaseNameLength = sqlObject.DatabaseName.Length;
                     int schemaLength = schema.Length;
                     int objectNameLength = sqlObject.ObjectName.Length;
+                    range.Characters[1, aliasLength].Font.Color = RGB(65, 65, 65);
                     range.Characters[aliasLength + 2, databaseNameLength].Font.Color = RGB(20, 120, 145);
                     range.Characters[aliasLength + databaseNameLength + 3, schemaLength].Font.Color = RGB(100, 60, 150);
                     range.Characters[aliasLength + databaseNameLength + schemaLength + 4, objectNameLength].Font.Color = RGB(0, 80, 135);
