@@ -12,6 +12,7 @@ namespace Mao.Generate.Core.Models
     [TypeConverter(typeof(SqlTableConverter))]
     public class SqlTable
     {
+        public string Schema { get; set; }
         /// <summary>
         /// 資料表名稱
         /// </summary>

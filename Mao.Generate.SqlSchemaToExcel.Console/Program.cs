@@ -32,7 +32,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         /// 要匯出資料結構的資料庫的的連接字串
         /// <para><see cref="isRemoteMode"/> = false 才需要設定</para>
         /// </summary>
-        const string connectionString = @"";
+        const string connectionString = @"server=AUOHQHRMTT01;database=HrTmplSE;uid=uHrTmplSE;pwd=uHrTmplSE#123;TrustServerCertificate=True";
         /// <summary>
         /// 匯出檔案要儲存的位置及名稱
         /// </summary>
@@ -184,7 +184,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                     // 連結目標在同一個檔案內不用給值
                     "",
                     // 連結位置
-                    GetTableAddress(databaseName, sqlTable.Name),
+                    GetTableAddress(databaseName, sqlTable.Schema, sqlTable.Name),
                     // 連結文字 (資料表名稱)
                     TextToDisplay: sqlTable.Name);
                 // 設定連結字體會跑掉，需要重設
@@ -237,7 +237,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 worksheet.Cells[rowIndex, 1] = num;
                 // 檢視名稱
                 // 取得連結
-                var linkAddress = GetViewAddress(databaseName, sqlView.Name);
+                var linkAddress = GetViewAddress(databaseName, sqlView.Schema, sqlView.Name);
                 if (string.IsNullOrEmpty(linkAddress))
                 {
                     // 沒有連結直接顯示檢視名稱
@@ -303,7 +303,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 worksheet.Cells[rowIndex, 1] = num;
                 // 預存程序名稱
                 // 取得連結
-                var linkAddress = GetProcedureAddress(databaseName, sqlProcedure.Name);
+                var linkAddress = GetProcedureAddress(databaseName, sqlProcedure.Schema, sqlProcedure.Name);
                 if (string.IsNullOrEmpty(linkAddress))
                 {
                     // 沒有連結直接顯示預存程序名稱
@@ -353,7 +353,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                     // 連結目標在同一個檔案內不用給值
                     "",
                     // 連結位置
-                    GetTableToListAddress(databaseName, sqlTable.Name),
+                    GetTableToListAddress(databaseName, sqlTable.Schema, sqlTable.Name),
                     // 連結文字
                     TextToDisplay: "回清單");
                 // 設定連結字體會跑掉，需要重設
@@ -564,9 +564,9 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                 }
                 else
                 {
-                    // 顯示文字 = Alias + 資料表名稱 + dbo + 物件名稱
+                    // 顯示文字 = Alias + 資料表名稱 + schema + 物件名稱
                     string alias = $"[{sqlObject.ObjectAlias}]";
-                    string schema = "dbo";
+                    string schema = sqlObject.SchemaName;
                     string displayText = $"{alias} {sqlObject.DatabaseName}.{schema}.{sqlObject.ObjectName} {sqlObject.ErrorMessage}";
                     string linkAddress = startColunmIndex < columnIndex ? GetObjectAddress(sqlObject) : null;
                     if (string.IsNullOrEmpty(linkAddress))
@@ -590,7 +590,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                         range.Font.Name = "微軟正黑體";
                         range.Font.Size = 10;
                     }
-                    // 區別 資料表名稱 dbo 物件名稱 文字顏色
+                    // 區別 資料表名稱 schema 物件名稱 文字顏色
                     int aliasLength = alias.Length;
                     int databaseNameLength = sqlObject.DatabaseName.Length;
                     int schemaLength = schema.Length;
@@ -699,20 +699,20 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
             switch (sqlObject.ObjectType)
             {
                 case "U":
-                    return GetTableToListAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                    return GetTableToListAddress(sqlObject.DatabaseName, sqlObject.SchemaName, sqlObject.ObjectName);
                 case "V":
-                    return GetViewToListAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                    return GetViewToListAddress(sqlObject.DatabaseName, sqlObject.SchemaName, sqlObject.ObjectName);
                 case "P":
-                    return GetProcedureToListAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                    return GetProcedureToListAddress(sqlObject.DatabaseName, sqlObject.SchemaName, sqlObject.ObjectName);
             }
             return null;
         }
         /// <summary>
         /// 取得資料表回清單連結
         /// </summary>
-        private string GetTableToListAddress(string databaseName, string tableName)
+        private string GetTableToListAddress(string databaseName, string schema, string tableName)
         {
-            string cacheKey = $"{databaseName}.dbo.{tableName}";
+            string cacheKey = $"{databaseName}.{schema}.{tableName}";
             if (!toListTableLinkAddressCache.ContainsKey(cacheKey))
             {
                 string linkAddress = null;
@@ -737,9 +737,9 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         /// <summary>
         /// 取得檢視回清單連結
         /// </summary>
-        private string GetViewToListAddress(string databaseName, string viewName)
+        private string GetViewToListAddress(string databaseName, string schema, string viewName)
         {
-            string cacheKey = $"{databaseName}.dbo.{viewName}";
+            string cacheKey = $"{databaseName}.{schema}.{viewName}";
             if (!toListViewLinkAddressCache.ContainsKey(cacheKey))
             {
                 string linkAddress = null;
@@ -764,9 +764,9 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         /// <summary>
         /// 取得預存程序回清單連結
         /// </summary>
-        private string GetProcedureToListAddress(string databaseName, string procedureName)
+        private string GetProcedureToListAddress(string databaseName, string schema, string procedureName)
         {
-            string cacheKey = $"{databaseName}.dbo.{procedureName}";
+            string cacheKey = $"{databaseName}.{schema}.{procedureName}";
             if (!toListProcedureLinkAddressCache.ContainsKey(cacheKey))
             {
                 string linkAddress = null;
@@ -797,20 +797,20 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
             switch (sqlObject.ObjectType)
             {
                 case "U":
-                    return GetTableAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                    return GetTableAddress(sqlObject.DatabaseName, sqlObject.SchemaName, sqlObject.ObjectName);
                 case "V":
-                    return GetViewAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                    return GetViewAddress(sqlObject.DatabaseName, sqlObject.SchemaName, sqlObject.ObjectName);
                 case "P":
-                    return GetProcedureAddress(sqlObject.DatabaseName, sqlObject.ObjectName);
+                    return GetProcedureAddress(sqlObject.DatabaseName, sqlObject.SchemaName, sqlObject.ObjectName);
             }
             return null;
         }
         /// <summary>
         /// 取得資料表的連結
         /// </summary>
-        private string GetTableAddress(string databaseName, string tableName)
+        private string GetTableAddress(string databaseName, string schema, string tableName)
         {
-            string cacheKey = $"{databaseName}.dbo.{tableName}";
+            string cacheKey = $"{databaseName}.{schema}.{tableName}";
             if (!tableLinkAddressCache.ContainsKey(cacheKey))
             {
                 string linkAddress = null;
@@ -836,9 +836,9 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         /// <summary>
         /// 取得檢視的連結
         /// </summary>
-        private string GetViewAddress(string databaseName, string viewName)
+        private string GetViewAddress(string databaseName, string schema, string viewName)
         {
-            string cacheKey = $"{databaseName}.dbo.{viewName}";
+            string cacheKey = $"{databaseName}.{schema}.{viewName}";
             if (!viewLinkAddressCache.ContainsKey(cacheKey))
             {
                 string linkAddress = null;
@@ -873,9 +873,9 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         /// <summary>
         /// 取得預存程序的連結
         /// </summary>
-        private string GetProcedureAddress(string databaseName, string procedureName)
+        private string GetProcedureAddress(string databaseName, string schema, string procedureName)
         {
-            string cacheKey = $"{databaseName}.dbo.{procedureName}";
+            string cacheKey = $"{databaseName}.{schema}.{procedureName}";
             if (!procedureLinkAddressCache.ContainsKey(cacheKey))
             {
                 string linkAddress = null;

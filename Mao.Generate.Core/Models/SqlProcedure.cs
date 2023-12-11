@@ -8,6 +8,7 @@ namespace Mao.Generate.Core.Models
 {
     public class SqlProcedure
     {
+        public string Schema { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
     }

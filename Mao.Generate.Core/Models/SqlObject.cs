@@ -6,6 +6,7 @@ namespace Mao.Generate.Core.Models
     public class SqlObject
     {
         public string DatabaseName { get; set; }
+        public string SchemaName { get; set; }
         public string ObjectName { get; set; }
         public string ObjectType { get; set; }
         public string ObjectTypeDesc { get; set; }
