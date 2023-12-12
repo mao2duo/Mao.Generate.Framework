@@ -284,15 +284,15 @@ namespace Mao.Generate.Core.Services
                             using (var conn = new SqlConnection(connectionStringBuilder.ConnectionString))
                             {
                                 var reader = conn.ExecuteReader(@"
-                                    SELECT DISTINCT SCHEMA_NAME(o.[schema_id])                  AS [ObjectSchemaName],
-                                                    o.[name]                                    AS [ObjectName],
-                                                    o.[type]                                    AS [ObjectType],
-                                                    o.[type_desc]                               AS [ObjectTypeDesc],
-                                                    ref.[referenced_database_name]              AS [ReferencedDatabase],
-                                                    ISNULL(ref.[referenced_schema_name], 'dbo') AS [ReferencedSchemaName],
-                                                    ref.[referenced_entity_name]                AS [ReferencedName],
-                                                    ref.[referenced_class]                      AS [ReferencedClass],
-                                                    ref.[referenced_class_desc]                 AS [ReferencedClassDesc]
+                                    SELECT DISTINCT SCHEMA_NAME(o.[schema_id])                          AS [ObjectSchemaName],
+                                                    o.[name]                                            AS [ObjectName],
+                                                    o.[type]                                            AS [ObjectType],
+                                                    o.[type_desc]                                       AS [ObjectTypeDesc],
+                                                    ref.[referenced_database_name]                      AS [ReferencedDatabase],
+                                                    ISNULL(ref.[referenced_schema_name], SCHEMA_NAME()) AS [ReferencedSchemaName],
+                                                    ref.[referenced_entity_name]                        AS [ReferencedName],
+                                                    ref.[referenced_class]                              AS [ReferencedClass],
+                                                    ref.[referenced_class_desc]                         AS [ReferencedClassDesc]
                                     FROM   sys.objects o
                                            LEFT JOIN sys.sql_expression_dependencies ref ON ref.referencing_id = o.[object_id]
                                     WHERE  o.[schema_id] = SCHEMA_ID(@SchemaName)
@@ -353,15 +353,15 @@ namespace Mao.Generate.Core.Services
             using (var conn = new SqlConnection(connectionStringBuilder.ConnectionString))
             {
                 var reader = conn.ExecuteReader(@"
-                    SELECT DISTINCT SCHEMA_NAME(o.[schema_id])                  AS [ObjectSchemaName],
-                                    o.[name]                                    AS [ObjectName],
-                                    o.[type]                                    AS [ObjectType],
-                                    o.[type_desc]                               AS [ObjectTypeDesc],
-                                    ref.[referenced_database_name]              AS [ReferencedDatabase],
-                                    ISNULL(ref.[referenced_schema_name], 'dbo') AS [ReferencedSchemaName],
-                                    ref.[referenced_entity_name]                AS [ReferencedName],
-                                    ref.[referenced_class]                      AS [ReferencedClass],
-                                    ref.[referenced_class_desc]                 AS [ReferencedClassDesc]
+                    SELECT DISTINCT SCHEMA_NAME(o.[schema_id])                          AS [ObjectSchemaName],
+                                    o.[name]                                            AS [ObjectName],
+                                    o.[type]                                            AS [ObjectType],
+                                    o.[type_desc]                                       AS [ObjectTypeDesc],
+                                    ref.[referenced_database_name]                      AS [ReferencedDatabase],
+                                    ISNULL(ref.[referenced_schema_name], SCHEMA_NAME()) AS [ReferencedSchemaName],
+                                    ref.[referenced_entity_name]                        AS [ReferencedName],
+                                    ref.[referenced_class]                              AS [ReferencedClass],
+                                    ref.[referenced_class_desc]                         AS [ReferencedClassDesc]
                     FROM   sys.objects o
                            LEFT JOIN sys.sql_expression_dependencies ref ON ref.referencing_id = o.[object_id]
                     WHERE  o.[type] IN ( 'V', 'P', 'IF', 'FN' ) ");
@@ -689,6 +689,9 @@ namespace Mao.Generate.Core.Services
             foreach (XmlNode table in tables)
             {
                 SqlTable sqlTable = new SqlTable();
+                Invoker.UsingIf(table.SelectSingleNode("Schema"),
+                    node => node != null,
+                    node => sqlTable.Schema = node.InnerText);
                 Invoker.UsingIf(table.SelectSingleNode("Name"),
                     node => node != null,
                     node => sqlTable.Name = node.InnerText);
@@ -772,6 +775,9 @@ namespace Mao.Generate.Core.Services
             foreach (XmlNode view in views)
             {
                 SqlView sqlView = new SqlView();
+                Invoker.UsingIf(view.SelectSingleNode("Schema"),
+                    node => node != null,
+                    node => sqlView.Schema = node.InnerText);
                 Invoker.UsingIf(view.SelectSingleNode("Name"),
                     node => node != null,
                     node => sqlView.Name = node.InnerText);
@@ -794,6 +800,9 @@ namespace Mao.Generate.Core.Services
             foreach (XmlNode procedure in procedures)
             {
                 SqlProcedure sqlProcedure = new SqlProcedure();
+                Invoker.UsingIf(procedure.SelectSingleNode("Schema"),
+                    node => node != null,
+                    node => sqlProcedure.Schema = node.InnerText);
                 Invoker.UsingIf(procedure.SelectSingleNode("Name"),
                     node => node != null,
                     node => sqlProcedure.Name = node.InnerText);
@@ -803,6 +812,50 @@ namespace Mao.Generate.Core.Services
                 sqlProcedures.Add(sqlProcedure);
             }
             return sqlProcedures.ToArray();
+        }
+
+        public virtual SqlObjectDependency[] ReadSqlObjectDependenciesFromXml(string xml)
+        {
+            List<SqlObjectDependency> sqlObjectDependencies = new List<SqlObjectDependency>();
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(xml);
+            var dependencies = doc.DocumentElement.SelectNodes("dependency");
+            foreach (XmlNode dependency in dependencies)
+            {
+                SqlObjectDependency sqlObjectDependency = new SqlObjectDependency();
+                Invoker.UsingIf(dependency.SelectSingleNode("ObjectDatabase"),
+                    node => node != null,
+                    node => sqlObjectDependency.ObjectDatabase = node.InnerText);
+                Invoker.UsingIf(dependency.SelectSingleNode("ObjectSchemaName"),
+                    node => node != null,
+                    node => sqlObjectDependency.ObjectSchemaName = node.InnerText);
+                Invoker.UsingIf(dependency.SelectSingleNode("ObjectName"),
+                    node => node != null,
+                    node => sqlObjectDependency.ObjectName = node.InnerText);
+                Invoker.UsingIf(dependency.SelectSingleNode("ObjectType"),
+                    node => node != null,
+                    node => sqlObjectDependency.ObjectType = node.InnerText);
+                Invoker.UsingIf(dependency.SelectSingleNode("ObjectTypeDesc"),
+                    node => node != null,
+                    node => sqlObjectDependency.ObjectTypeDesc = node.InnerText);
+                Invoker.UsingIf(dependency.SelectSingleNode("ReferencedDatabase"),
+                    node => node != null,
+                    node => sqlObjectDependency.ReferencedDatabase = node.InnerText);
+                Invoker.UsingIf(dependency.SelectSingleNode("ReferencedSchemaName"),
+                    node => node != null,
+                    node => sqlObjectDependency.ReferencedSchemaName = node.InnerText);
+                Invoker.UsingIf(dependency.SelectSingleNode("ReferencedName"),
+                    node => node != null,
+                    node => sqlObjectDependency.ReferencedName = node.InnerText);
+                Invoker.UsingIf(dependency.SelectSingleNode("ReferencedClass"),
+                    node => node != null,
+                    node => sqlObjectDependency.ReferencedClass = Convert.ToByte(node.InnerText));
+                Invoker.UsingIf(dependency.SelectSingleNode("ReferencedClassDesc"),
+                    node => node != null,
+                    node => sqlObjectDependency.ReferencedClassDesc = node.InnerText);
+                sqlObjectDependencies.Add(sqlObjectDependency);
+            }
+            return sqlObjectDependencies.ToArray();
         }
 
         /// <summary>

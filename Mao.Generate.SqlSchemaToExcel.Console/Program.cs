@@ -32,7 +32,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
         /// 要匯出資料結構的資料庫的的連接字串
         /// <para><see cref="isRemoteMode"/> = false 才需要設定</para>
         /// </summary>
-        const string connectionString = @"server=AUOHQHRMTT01;database=HrTmplSE;uid=uHrTmplSE;pwd=uHrTmplSE#123;TrustServerCertificate=True";
+        const string connectionString = @"";
         /// <summary>
         /// 匯出檔案要儲存的位置及名稱
         /// </summary>
@@ -52,7 +52,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                     Awaiter = message =>
                     {
                         System.Console.WriteLine(message);
-                        System.Console.Write("按 Y 載入資料；按 N 不載入資料：");
+                        System.Console.Write("儲存完成後按 Y 載入資料；或按 ESC 不載入資料繼續：");
                         while (true)
                         {
                             var consoleRead = System.Console.ReadKey();
@@ -61,7 +61,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
                                 System.Console.WriteLine();
                                 return true;
                             }
-                            if (consoleRead.Key == ConsoleKey.N)
+                            if (consoleRead.Key == ConsoleKey.Escape)
                             {
                                 System.Console.WriteLine();
                                 return false;
@@ -453,7 +453,7 @@ namespace Mao.Generate.SqlSchemaToExcel.Console
             Excel.Range range;
 
             // sqlObjects 總共會用到幾欄
-            int columnWidth = sqlObjects.Max(GetWidth);
+            int columnWidth = sqlObjects.Any() ? sqlObjects.Max(GetWidth) : 0;
             // 從第幾個列開始寫入 sqlObjects
             const int startRowIndex = 1;
             // 從第幾個欄開始寫入 sqlObjects

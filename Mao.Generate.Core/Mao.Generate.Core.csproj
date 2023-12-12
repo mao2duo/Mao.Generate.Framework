@@ -58,6 +58,7 @@
     <Compile Include="Models\GeneratedText.cs" />
     <Compile Include="Models\SqlDatabase.cs" />
     <Compile Include="Models\SqlObject.cs" />
+    <Compile Include="Models\SqlObjectDependency.cs" />
     <Compile Include="Models\SqlProcedure.cs" />
     <Compile Include="Models\SqlView.cs" />
     <Compile Include="Models\WinDirectory.cs" />

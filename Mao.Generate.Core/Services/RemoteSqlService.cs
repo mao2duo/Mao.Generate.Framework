@@ -1,10 +1,11 @@
 ﻿using Mao.Generate.Core.Models;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Mao.Generate.Core.Services
 {
@@ -36,10 +37,15 @@ namespace Mao.Generate.Core.Services
             string dataFilePath = Path.Combine(TempPath, dataFileName.ToFileName());
             Directory.CreateDirectory(TempPath);
             File.WriteAllText(commandFilePath, sqlCommand, Encoding.UTF8);
+            // 如果目的檔案不存在，建立一個空的
+            if (!File.Exists(dataFilePath))
+            {
+                File.WriteAllText(dataFilePath, string.Empty, Encoding.UTF8);
+            }
 
             do
             {
-                if (!Awaiter($"請將 {commandFilePath} 的內容做為查詢指令放至目的資料庫執行，並將結果儲存於 {dataFilePath}"))
+                if (!Awaiter($"請於目的資料庫查詢該檔案內容：{commandFilePath}{Environment.NewLine}並將查詢結果儲存於該檔案內容：{dataFilePath}。"))
                 {
                     return null;
                 }
@@ -51,7 +57,8 @@ namespace Mao.Generate.Core.Services
         public override SqlTable[] GetSqlTables(string connectionString, params string[] tableNames)
         {
             string sql = $@"
-                SELECT o.[name]                       AS [Name],
+                SELECT SCHEMA_NAME(o.[schema_id])     AS [Schema],
+                       o.[name]                       AS [Name],
                        o_des.[value]                  AS [Description],
                        (SELECT c.column_id                            AS Id,
                                CASE
@@ -96,8 +103,9 @@ namespace Mao.Generate.Core.Services
         public override SqlView[] GetSqlViews(string connectionString, params string[] viewNames)
         {
             string sql = $@"
-                SELECT o.[name]      AS [Name],
-                       o_des.[value] AS [Description]
+                SELECT SCHEMA_NAME(o.[schema_id]) AS [Schema],
+                       o.[name]                   AS [Name],
+                       o_des.[value]              AS [Description]
                 FROM   sys.objects o
                        LEFT JOIN sys.extended_properties o_des ON o_des.major_id = o.[object_id] AND o_des.minor_id = 0 AND o_des.[name] = 'MS_Description'
                 WHERE  o.[type] = 'V'
@@ -115,8 +123,9 @@ namespace Mao.Generate.Core.Services
         public override SqlProcedure[] GetSqlProcedures(string connectionString, params string[] procedureNames)
         {
             string sql = $@"
-                SELECT o.[name]      AS [Name],
-                       o_des.[value] AS [Description]
+                SELECT SCHEMA_NAME(o.[schema_id]) AS [Schema],
+                       o.[name]                   AS [Name],
+                       o_des.[value]              AS [Description]
                 FROM   sys.objects o
                        LEFT JOIN sys.extended_properties o_des ON o_des.major_id = o.[object_id] AND o_des.minor_id = 0 AND o_des.[name] = 'MS_Description'
                 WHERE  o.[type] = 'P'
@@ -129,6 +138,188 @@ namespace Mao.Generate.Core.Services
                 return null;
             }
             return ReadSqlProceduresFromXml(xml);
+        }
+
+        public override SqlObject[] GetSqlObjectReference(string connectionString)
+        {
+            SqlConnectionStringBuilder connectionStringBuilder = new SqlConnectionStringBuilder();
+            connectionStringBuilder.ConnectionString = connectionString;
+
+            int n = 1;
+            Dictionary<SqlObject, SqlObject> referencingResolver = new Dictionary<SqlObject, SqlObject>();
+            Dictionary<string, SqlObjectDependency[]> dependenciesCache = new Dictionary<string, SqlObjectDependency[]>(StringComparer.OrdinalIgnoreCase);
+
+            void QueryReferences(SqlObject[] sqlObjects)
+            {
+                foreach (var dbReferences in sqlObjects
+                    .SelectMany(x => x.Reference)
+                    .GroupBy(x => new
+                    {
+                        x.SchemaName,
+                        x.DatabaseName
+                    }))
+                {
+                    var objectNames = dbReferences
+                        .Where(x => !dependenciesCache.ContainsKey($"{x.DatabaseName}.{x.SchemaName}.{x.ObjectName}"))
+                        .Select(x => x.ObjectName);
+                    if (objectNames.Any())
+                    {
+                        var sqlBuilder = new StringBuilder();
+                        sqlBuilder.AppendLine($"USE [{dbReferences.Key.DatabaseName}]");
+                        sqlBuilder.AppendLine($"GO");
+                        sqlBuilder.AppendLine($@"
+                            SELECT DISTINCT {AddQuotes(dbReferences.Key.DatabaseName)}          AS [ObjectDatabase],
+                                            SCHEMA_NAME(o.[schema_id])                          AS [ObjectSchemaName],
+                                            o.[name]                                            AS [ObjectName],
+                                            o.[type]                                            AS [ObjectType],
+                                            o.[type_desc]                                       AS [ObjectTypeDesc],
+                                            ref.[referenced_database_name]                      AS [ReferencedDatabase],
+                                            ISNULL(ref.[referenced_schema_name], SCHEMA_NAME()) AS [ReferencedSchemaName],
+                                            ref.[referenced_entity_name]                        AS [ReferencedName],
+                                            ref.[referenced_class]                              AS [ReferencedClass],
+                                            ref.[referenced_class_desc]                         AS [ReferencedClassDesc]
+                            FROM   sys.objects o
+                                   LEFT JOIN sys.sql_expression_dependencies ref ON ref.referencing_id = o.[object_id]
+                            WHERE  o.[schema_id] = SCHEMA_ID({AddQuotes(dbReferences.Key.SchemaName)})
+                                   AND o.[name] IN ({string.Join(", ", objectNames.Select(x => AddQuotes(x)))}) 
+                            FOR xml path('dependency'), root('dependencies') ".Unindent(28).TrimStart('\r', '\n'));
+                        sqlBuilder.AppendLine($"GO");
+
+                        string xml = GetRemoteData(sqlBuilder.ToString(), $"GetSqlObjectDependencies{n:000}.sql", $"GetSqlObjectDependencies{n:000}.xml");
+                        if (!string.IsNullOrEmpty(xml))
+                        {
+                            var dependencies = ReadSqlObjectDependenciesFromXml(xml);
+                            foreach (var group in dependencies.GroupBy(x => $"{x.ObjectDatabase}.{x.ObjectSchemaName}.{x.ObjectName}"))
+                            {
+                                dependenciesCache.Add(group.Key, group.ToArray());
+                            }
+                        }
+                        n++;
+                    }
+                }
+            }
+
+            void FillReferences(SqlObject[] sqlObjects)
+            {
+                if (sqlObjects.Any())
+                {
+                    QueryReferences(sqlObjects);
+                    List<SqlObject> references = new List<SqlObject>();
+                    foreach (var sqlObject in sqlObjects)
+                    {
+                        foreach (var dbReference in sqlObject.Reference)
+                        {
+                            var dependenciesKey = $"{dbReference.DatabaseName}.{dbReference.SchemaName}.{dbReference.ObjectName}";
+                            if (dependenciesCache.ContainsKey(dependenciesKey))
+                            {
+                                bool loop;
+                                var loopObject = sqlObject;
+                                while (true)
+                                {
+                                    loop = $"{loopObject.DatabaseName}.{loopObject.SchemaName}.{loopObject.ObjectName}".Equals(dependenciesKey, StringComparison.OrdinalIgnoreCase);
+                                    if (loop || !referencingResolver.ContainsKey(loopObject))
+                                    {
+                                        break;
+                                    }
+                                    loopObject = referencingResolver[loopObject];
+                                }
+                                if (!loop)
+                                {
+                                    referencingResolver.Add(dbReference, sqlObject);
+                                    var dependencies = dependenciesCache[dependenciesKey];
+                                    var dependency = dependencies.First();
+                                    dbReference.ObjectType = dependency.ObjectType?.TrimEnd();
+                                    dbReference.ObjectTypeDesc = dependency.ObjectTypeDesc;
+                                    dbReference.Reference = dependencies
+                                        .Where(x => !string.IsNullOrEmpty(x.ReferencedName))
+                                        .Select(x => new SqlObject()
+                                        {
+                                            DatabaseName = x.ReferencedDatabase ?? dbReference.DatabaseName,
+                                            SchemaName = x.ReferencedSchemaName,
+                                            ObjectName = x.ReferencedName,
+                                            Class = x.ReferencedClass,
+                                            ClassDesc = x.ReferencedClassDesc
+                                        })
+                                        .ToList();
+                                    references.Add(dbReference);
+                                }
+                            }
+                        }
+                    }
+                    FillReferences(references.ToArray());
+                }
+            }
+
+            //connectionStringBuilder.TrustServerCertificate = true;
+            using (var conn = new SqlConnection(connectionStringBuilder.ConnectionString))
+            {
+                string sql = @"
+                    SELECT DISTINCT DB_NAME()                                           AS [ObjectDatabase],
+                                    SCHEMA_NAME(o.[schema_id])                          AS [ObjectSchemaName],
+                                    o.[name]                                            AS [ObjectName],
+                                    o.[type]                                            AS [ObjectType],
+                                    o.[type_desc]                                       AS [ObjectTypeDesc],
+                                    ref.[referenced_database_name]                      AS [ReferencedDatabase],
+                                    ISNULL(ref.[referenced_schema_name], SCHEMA_NAME()) AS [ReferencedSchemaName],
+                                    ref.[referenced_entity_name]                        AS [ReferencedName],
+                                    ref.[referenced_class]                              AS [ReferencedClass],
+                                    ref.[referenced_class_desc]                         AS [ReferencedClassDesc]
+                    FROM   sys.objects o
+                           LEFT JOIN sys.sql_expression_dependencies ref ON ref.referencing_id = o.[object_id]
+                    WHERE  o.[type] IN ( 'V', 'P', 'IF', 'FN' ) 
+                    FOR xml path('dependency'), root('dependencies') ".Unindent(16).TrimStart('\r', '\n');
+                string xml = GetRemoteData(sql, "GetSqlObjectDependencies.sql", "GetSqlObjectDependencies.xml");
+                if (!string.IsNullOrEmpty(xml))
+                {
+                    var sqlObjects = ReadSqlObjectDependenciesFromXml(xml)
+                        .GroupBy(x => new
+                        {
+                            ObjectDatabase = x.ObjectDatabase,
+                            ObjectSchemaName = x.ObjectSchemaName,
+                            ObjectName = x.ObjectName,
+                            ObjectType = x.ObjectType,
+                            ObjectTypeDesc = x.ObjectTypeDesc
+                        })
+                        .Select(group => new SqlObject()
+                        {
+                            DatabaseName = group.Key.ObjectDatabase,
+                            SchemaName = group.Key.ObjectSchemaName,
+                            ObjectName = group.Key.ObjectName,
+                            ObjectType = group.Key.ObjectType?.TrimEnd(),
+                            ObjectTypeDesc = group.Key.ObjectTypeDesc?.TrimEnd(),
+                            Reference = group
+                                .Where(x => !string.IsNullOrEmpty(x.ReferencedName))
+                                .Select(x => new SqlObject()
+                                {
+                                    DatabaseName = x.ReferencedDatabase ?? group.Key.ObjectDatabase,
+                                    SchemaName = x.ReferencedSchemaName,
+                                    ObjectName = x.ReferencedName,
+                                    Class = x.ReferencedClass,
+                                    ClassDesc = x.ReferencedClassDesc
+                                }).ToList()
+                        })
+                        .OrderBy(x =>
+                        {
+                            switch (x.ObjectType)
+                            {
+                                case "V":
+                                    return "0";
+                                case "P":
+                                    return "1";
+                                case "IF":
+                                    return "2";
+                                case "FN":
+                                    return "3";
+                            }
+                            return x.ObjectType;
+                        })
+                        .ThenBy(x => x.ObjectName)
+                        .ToArray();
+                    FillReferences(sqlObjects);
+                    return sqlObjects;
+                }
+            }
+            return null;
         }
 
         public override void UpdateTableDescription(string connectionString, string tableName, string description)
